@@ -10,15 +10,23 @@
     "frontendDist": "../dist"
   },
   "app": {
+    "macOSPrivateApi": true,
     "windows": [
       {
         "title": "CluaNote",
         "width": 800,
-        "height": 600
+        "height": 600,
+        "transparent": true,
+        "decorations": false
       }
     ],
     "security": {
       "csp": null
+    }
+  },
+  "plugins": {
+    "sql": {
+      "preload": ["sqlite:cluanote.db"]
     }
   },
   "bundle": {
