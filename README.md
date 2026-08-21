@@ -43,7 +43,7 @@ The interface is fluid from a compact 360px sidebar to a full widescreen window.
 | | CluaNote (Tauri + Rust) | Typical Electron App |
 |---|---|---|
 | **Binary size** | ~12 MB | 150–250 MB |
-| **Memory at idle** | ~25–40 MB RAM | 200–400 MB RAM |
+| **Memory at idle** | ~4–7 MB RAM | 200–400 MB RAM |
 | **Cold start** | < 500ms | 2–5 seconds |
 | **Bundled runtime** | OS-native WebView | Full Chromium |
 | **Data storage** | Local SQLite, on-device | Cloud or opaque local |
