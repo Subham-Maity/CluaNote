@@ -48,7 +48,7 @@ export const Timeline: React.FC<TimelineProps> = ({
   const currentMinute = now.getMinutes();
 
   return (
-    <div className="relative px-4 py-3 flex-1 overflow-y-auto">
+    <div className="relative px-3 sm:px-4 py-3 flex-1 overflow-y-auto">
       <div className="space-y-4 relative">
         {hours.map((hour) => {
           const hourLabel = `${hour.toString().padStart(2, "0")}:00`;
@@ -56,20 +56,20 @@ export const Timeline: React.FC<TimelineProps> = ({
           const isCurrentHour = isSelectedToday && currentHour === hour;
 
           return (
-            <div key={hour} className="relative flex items-start space-x-3">
+            <div key={hour} className="relative flex items-start space-x-2.5 sm:space-x-3">
               {/* Hour Label */}
-              <div className="w-12 pt-1 text-right flex-shrink-0">
-                <span className="text-[11px] font-mono font-medium text-white/40">
+              <div className="w-10 sm:w-12 pt-1 text-right flex-shrink-0">
+                <span className="text-[10px] sm:text-[11px] font-mono font-medium text-white/40">
                   {hourLabel}
                 </span>
               </div>
 
               {/* Timeline slot & Tasks */}
-              <div className="flex-1 min-h-[38px] pb-2 border-t border-white/[0.06] pt-1">
+              <div className="flex-1 min-h-[38px] pb-2 border-t border-white/[0.06] pt-1 min-w-0">
                 {/* Current time line inside current hour */}
                 {isCurrentHour && (
                   <div
-                    className="absolute left-14 right-0 flex items-center z-10 pointer-events-none"
+                    className="absolute left-12 sm:left-14 right-0 flex items-center z-10 pointer-events-none"
                     style={{
                       top: `${((currentMinute / 60) * 100).toFixed(0)}%`,
                     }}

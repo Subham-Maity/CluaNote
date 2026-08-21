@@ -23,11 +23,11 @@ export const AboutModal: React.FC<AboutModalProps> = ({ isOpen, onClose }) => {
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in"
+      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-sm animate-fade-in"
       onClick={onClose}
     >
       <div
-        className="w-full max-w-sm glass-modal p-6 animate-scale-up text-center relative"
+        className="w-[calc(100%-1.5rem)] max-w-sm max-h-[92vh] overflow-y-auto glass-modal p-5 sm:p-6 animate-scale-up text-center relative"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Close Button */}
@@ -84,7 +84,7 @@ export const AboutModal: React.FC<AboutModalProps> = ({ isOpen, onClose }) => {
         </div>
 
         {/* Social Links */}
-        <div className="mt-4 flex items-center justify-center space-x-2">
+        <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
           <button
             type="button"
             onClick={() => handleOpenLink("https://github.com/Subham-Maity")}

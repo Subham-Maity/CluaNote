@@ -20,7 +20,7 @@ export const AnytimeSection: React.FC<AnytimeSectionProps> = ({
   }
 
   return (
-    <div className="px-4 pt-3 pb-2">
+    <div className="px-3 sm:px-4 pt-3 pb-2">
       <div className="flex items-center justify-between mb-2">
         <div className="flex items-center space-x-2">
           <svg

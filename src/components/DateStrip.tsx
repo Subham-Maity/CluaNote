@@ -98,7 +98,7 @@ export const DateStrip: React.FC<DateStripProps> = ({
       </div>
 
       {/* 7-day horizontal strip */}
-      <div className="flex items-center space-x-2 overflow-x-auto pb-1 scrollbar-none">
+      <div className="flex items-center space-x-2 overflow-x-auto pb-1 scrollbar-none touch-pan-x">
         {days.map((d) => {
           const dateStr = format(d, "yyyy-MM-dd");
           const isSelected = dateStr === selectedDate;
@@ -107,9 +107,10 @@ export const DateStrip: React.FC<DateStripProps> = ({
           return (
             <button
               key={dateStr}
+              type="button"
               onClick={() => onSelectDate(dateStr)}
               className={clsx(
-                "flex-1 min-w-[44px] py-2 px-1.5 rounded-xl flex flex-col items-center justify-center transition-all duration-200 cursor-pointer",
+                "flex-1 min-w-[42px] shrink-0 py-2 px-1.5 rounded-xl flex flex-col items-center justify-center transition-all duration-200 cursor-pointer",
                 isSelected
                   ? "bg-indigo-600/90 text-white shadow-lg shadow-indigo-500/30 scale-[1.02] border border-indigo-400/40"
                   : "bg-white/[0.04] text-white/70 hover:bg-white/[0.08] hover:text-white border border-white/[0.06]"

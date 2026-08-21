@@ -91,12 +91,12 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in"
+      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-sm animate-fade-in"
       onClick={onClose}
       onKeyDown={handleKeyDown}
     >
       <div
-        className="w-full max-w-md glass-modal p-5 animate-scale-up"
+        className="w-[calc(100%-1.5rem)] max-w-md max-h-[92vh] overflow-y-auto glass-modal p-4 sm:p-5 animate-scale-up"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Modal Header */}
