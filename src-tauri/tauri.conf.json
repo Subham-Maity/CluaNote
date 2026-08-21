@@ -14,8 +14,11 @@
     "windows": [
       {
         "title": "CluaNote",
-        "width": 800,
-        "height": 600,
+        "width": 850,
+        "height": 650,
+        "minWidth": 360,
+        "minHeight": 500,
+        "resizable": true,
         "transparent": true,
         "decorations": false
       }

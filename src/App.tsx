@@ -19,6 +19,43 @@ export function App() {
   const [isAddTaskOpen, setIsAddTaskOpen] = useState(false);
   const [isAboutOpen, setIsAboutOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
+  const [zoomLevel, setZoomLevel] = useState<number>(1);
+
+  // Zoom in / Zoom out with Ctrl + / Ctrl - / Ctrl 0 or Ctrl + Wheel
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.ctrlKey || e.metaKey) {
+        if (e.key === "=" || e.key === "+") {
+          e.preventDefault();
+          setZoomLevel((prev) => Math.min(Number((prev + 0.1).toFixed(1)), 1.5));
+        } else if (e.key === "-") {
+          e.preventDefault();
+          setZoomLevel((prev) => Math.max(Number((prev - 0.1).toFixed(1)), 0.75));
+        } else if (e.key === "0") {
+          e.preventDefault();
+          setZoomLevel(1);
+        }
+      }
+    };
+
+    const handleWheel = (e: WheelEvent) => {
+      if (e.ctrlKey || e.metaKey) {
+        e.preventDefault();
+        if (e.deltaY < 0) {
+          setZoomLevel((prev) => Math.min(Number((prev + 0.05).toFixed(2)), 1.5));
+        } else {
+          setZoomLevel((prev) => Math.max(Number((prev - 0.05).toFixed(2)), 0.75));
+        }
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    window.addEventListener("wheel", handleWheel, { passive: false });
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+      window.removeEventListener("wheel", handleWheel);
+    };
+  }, []);
 
   // Fetch tasks whenever selectedDate changes
   const fetchTasks = useCallback(async (date: string) => {
@@ -98,7 +135,10 @@ export function App() {
   const timedTasks = tasks.filter((t) => t.time && t.time.trim() !== "");
 
   return (
-    <div className="relative w-full h-full flex flex-col overflow-hidden text-white select-none">
+    <div
+      style={{ zoom: zoomLevel }}
+      className="relative w-full h-full flex flex-col overflow-hidden text-white select-none"
+    >
       {/* Dynamic ambient background with lighting */}
       <div className="app-background" />
 
