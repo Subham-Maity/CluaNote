@@ -4,7 +4,7 @@ pub use error::CommandError;
 use tauri::{
     menu::{MenuBuilder, MenuItemBuilder},
     tray::TrayIconBuilder,
-    Manager,
+    Manager, WindowEvent,
 };
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -17,6 +17,13 @@ pub fn run() {
             tauri_plugin_autostart::MacosLauncher::LaunchAgent,
             Some(vec![]),
         ))
+        .on_window_event(|window, event| {
+            // Intercept window close: prevent exit and hide window to background tray
+            if let WindowEvent::CloseRequested { api, .. } = event {
+                api.prevent_close();
+                let _ = window.hide();
+            }
+        })
         .setup(|app| {
             // Apply native OS window vibrancy/blur effects
             if let Some(window) = app.get_webview_window("main") {
@@ -36,7 +43,7 @@ pub fn run() {
                 }
             }
 
-            // System Tray setup
+            // System Tray setup with icon
             let show_item = MenuItemBuilder::new("Show CluaNote")
                 .id("show")
                 .build(app)?;
@@ -47,9 +54,16 @@ pub fn run() {
                 .items(&[&show_item, &quit_item])
                 .build()?;
 
-            let _tray = TrayIconBuilder::new()
+            let mut tray_builder = TrayIconBuilder::new()
                 .menu(&tray_menu)
-                .tooltip("CluaNote - Task Planner")
+                .tooltip("CluaNote - Task Planner");
+
+            // Attach default window icon so it is never blank in system tray
+            if let Some(icon) = app.default_window_icon() {
+                tray_builder = tray_builder.icon(icon.clone());
+            }
+
+            let _tray = tray_builder
                 .on_menu_event(|app, event| match event.id().as_ref() {
                     "show" => {
                         if let Some(window) = app.get_webview_window("main") {
@@ -77,6 +91,7 @@ pub fn run() {
                                 let _ = window.set_focus();
                             } else {
                                 let _ = window.show();
+                                let _ = window.unminimize();
                                 let _ = window.set_focus();
                             }
                         }

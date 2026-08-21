@@ -20,6 +20,19 @@ export async function getTasks(date: string): Promise<Task[]> {
 }
 
 /**
+ * Fetches all tasks in the database (for alarm checker and backups).
+ */
+export async function getAllTasks(): Promise<Task[]> {
+  const db = await getDb();
+  const rows = await db.select<Task[]>(
+    `SELECT id, title, note, date, time, priority, completed, created_at 
+     FROM tasks 
+     ORDER BY date ASC, time ASC, id ASC`
+  );
+  return rows;
+}
+
+/**
  * Inserts a new task into SQLite.
  */
 export async function addTask(task: NewTask): Promise<void> {
@@ -118,4 +131,55 @@ export async function toggleComplete(
     completed ? 1 : 0,
     id,
   ]);
+}
+
+/**
+ * Exports all tasks as a JSON formatted string for backup.
+ */
+export async function exportAllTasksJson(): Promise<string> {
+  const tasks = await getAllTasks();
+  const backup = {
+    appName: "CluaNote",
+    version: "0.2.1",
+    exportedAt: new Date().toISOString(),
+    totalTasks: tasks.length,
+    tasks,
+  };
+  return JSON.stringify(backup, null, 2);
+}
+
+/**
+ * Imports tasks from JSON backup data into SQLite.
+ */
+export async function importTasksFromJson(jsonData: string): Promise<number> {
+  const parsed = JSON.parse(jsonData);
+  const taskList: Task[] = Array.isArray(parsed)
+    ? parsed
+    : Array.isArray(parsed.tasks)
+    ? parsed.tasks
+    : [];
+
+  if (taskList.length === 0) {
+    throw new Error("No tasks found in the uploaded backup file");
+  }
+
+  const db = await getDb();
+  let count = 0;
+  for (const t of taskList) {
+    if (!t.title || !t.date) continue;
+    await db.execute(
+      `INSERT INTO tasks (title, note, date, time, priority, completed) 
+       VALUES ($1, $2, $3, $4, $5, $6)`,
+      [
+        t.title.trim(),
+        t.note ? t.note.trim() : null,
+        t.date,
+        t.time || null,
+        t.priority || "medium",
+        t.completed ? 1 : 0,
+      ]
+    );
+    count++;
+  }
+  return count;
 }

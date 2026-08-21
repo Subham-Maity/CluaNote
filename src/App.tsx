@@ -7,7 +7,18 @@ import { Timeline } from "./components/Timeline";
 import { FloatingAddButton } from "./components/FloatingAddButton";
 import { AddTaskModal } from "./components/AddTaskModal";
 import { AboutModal } from "./components/AboutModal";
-import { getTasks, addTask, updateTask, deleteTask, toggleComplete } from "./lib/tasks";
+import { AlarmModal } from "./components/AlarmModal";
+import { BackupModal } from "./components/BackupModal";
+import {
+  getTasks,
+  getAllTasks,
+  addTask,
+  updateTask,
+  deleteTask,
+  toggleComplete,
+} from "./lib/tasks";
+import { isAlarmEnabled, checkTaskAlarms } from "./lib/alarm";
+import { sendTaskNotification } from "./lib/notifications";
 import type { Task, NewTask } from "./types/task";
 
 export function App() {
@@ -18,10 +29,12 @@ export function App() {
   const [isLoading, setIsLoading] = useState(true);
   const [isAddTaskOpen, setIsAddTaskOpen] = useState(false);
   const [isAboutOpen, setIsAboutOpen] = useState(false);
+  const [isAlarmOpen, setIsAlarmOpen] = useState(false);
+  const [isBackupOpen, setIsBackupOpen] = useState(false);
+  const [isAlarmActive, setIsAlarmActive] = useState(() => isAlarmEnabled());
   const [editingTask, setEditingTask] = useState<Task | null>(null);
 
   // Zoom via Tauri native webview API (Ctrl+/- handled by zoomHotkeysEnabled in tauri.conf.json)
-  // Manual zoom shortcuts as fallback using setZoom
   useEffect(() => {
     let zoomLevel = 1;
 
@@ -34,7 +47,7 @@ export function App() {
             const { getCurrentWebview } = await import("@tauri-apps/api/webview");
             await getCurrentWebview().setZoom(zoomLevel);
           } catch {
-            // fallback: not in Tauri context (browser dev)
+            // fallback: not in Tauri context
           }
         } else if (e.key === "-") {
           e.preventDefault();
@@ -79,6 +92,22 @@ export function App() {
     fetchTasks(selectedDate);
   }, [selectedDate, fetchTasks]);
 
+  // Background Alarm Checker: runs every 10 seconds across all database tasks
+  useEffect(() => {
+    const alarmInterval = setInterval(async () => {
+      try {
+        if (isAlarmEnabled()) {
+          const allTasks = await getAllTasks();
+          checkTaskAlarms(allTasks);
+        }
+      } catch (err) {
+        console.warn("Alarm check ticker notice:", err);
+      }
+    }, 10000);
+
+    return () => clearInterval(alarmInterval);
+  }, []);
+
   // Optimistic toggle completion
   const handleToggleComplete = async (id: number, completed: boolean) => {
     const previousTasks = [...tasks];
@@ -116,7 +145,6 @@ export function App() {
     } else {
       await addTask(taskData);
       // Send desktop notification for new task
-      const { sendTaskNotification } = await import("./lib/notifications");
       sendTaskNotification(
         taskData.title,
         taskData.time ? `Scheduled for ${taskData.time}` : "Added to Anytime tasks"
@@ -150,8 +178,13 @@ export function App() {
       {/* Dynamic ambient background with lighting */}
       <div className="app-background" />
 
-      {/* Custom Titlebar with native drag and window controls */}
-      <TitleBar onOpenAbout={() => setIsAboutOpen(true)} />
+      {/* Custom Titlebar with native drag, alarm glow, and window controls */}
+      <TitleBar
+        onOpenAbout={() => setIsAboutOpen(true)}
+        onOpenAlarm={() => setIsAlarmOpen(true)}
+        onOpenBackup={() => setIsBackupOpen(true)}
+        isAlarmActive={isAlarmActive}
+      />
 
       {/* 7-day horizontal glass date strip */}
       <DateStrip selectedDate={selectedDate} onSelectDate={setSelectedDate} />
@@ -218,6 +251,20 @@ export function App() {
           setEditingTask(null);
         }}
         onSave={handleSaveTask}
+      />
+
+      {/* Task Alarm & Audio Settings Modal */}
+      <AlarmModal
+        isOpen={isAlarmOpen}
+        onClose={() => setIsAlarmOpen(false)}
+        onAlarmToggle={(enabled) => setIsAlarmActive(enabled)}
+      />
+
+      {/* Backup & Restore Modal */}
+      <BackupModal
+        isOpen={isBackupOpen}
+        onClose={() => setIsBackupOpen(false)}
+        onDataRestored={() => fetchTasks(selectedDate)}
       />
 
       {/* About Developer Modal */}

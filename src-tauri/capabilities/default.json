@@ -18,6 +18,9 @@
     "core:window:allow-is-maximized",
     "core:window:allow-is-minimized",
     "core:window:allow-set-focus",
+    "core:window:allow-hide",
+    "core:window:allow-show",
+    "core:window:allow-is-visible",
     "core:webview:allow-set-webview-zoom",
     "notification:default",
     "autostart:default"
