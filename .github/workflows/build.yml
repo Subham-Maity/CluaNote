@@ -57,6 +57,11 @@ jobs:
         uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Windows code signing (add these secrets to your GitHub repository settings)
+          # Generate with: openssl pkcs12 -export -in cert.pem -inkey key.pem -out cert.pfx
+          # Then base64-encode: certutil -encode cert.pfx cert.b64 (Windows) or base64 cert.pfx (Mac/Linux)
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         with:
           tagName: ${{ github.ref_name }}
           releaseName: 'CluaNote ${{ github.ref_name }}'
