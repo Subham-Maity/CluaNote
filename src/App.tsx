@@ -1,50 +1,180 @@
-import { useState } from "react";
-import reactLogo from "./assets/react.svg";
-import { invoke } from "@tauri-apps/api/core";
-import "./App.css";
+import { useState, useEffect, useCallback } from "react";
+import { format } from "date-fns";
+import { TitleBar } from "./components/TitleBar";
+import { DateStrip } from "./components/DateStrip";
+import { AnytimeSection } from "./components/AnytimeSection";
+import { Timeline } from "./components/Timeline";
+import { FloatingAddButton } from "./components/FloatingAddButton";
+import { AddTaskModal } from "./components/AddTaskModal";
+import { AboutModal } from "./components/AboutModal";
+import { getTasks, addTask, updateTask, deleteTask, toggleComplete } from "./lib/tasks";
+import type { Task, NewTask } from "./types/task";
 
-function App() {
-  const [greetMsg, setGreetMsg] = useState("");
-  const [name, setName] = useState("");
+export function App() {
+  const [selectedDate, setSelectedDate] = useState<string>(() =>
+    format(new Date(), "yyyy-MM-dd")
+  );
+  const [tasks, setTasks] = useState<Task[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isAddTaskOpen, setIsAddTaskOpen] = useState(false);
+  const [isAboutOpen, setIsAboutOpen] = useState(false);
+  const [editingTask, setEditingTask] = useState<Task | null>(null);
 
-  async function greet() {
-    // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
-    setGreetMsg(await invoke("greet", { name }));
-  }
+  // Fetch tasks whenever selectedDate changes
+  const fetchTasks = useCallback(async (date: string) => {
+    try {
+      setIsLoading(true);
+      const data = await getTasks(date);
+      setTasks(data);
+    } catch (err) {
+      console.error("Failed to load tasks for date:", date, err);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchTasks(selectedDate);
+  }, [selectedDate, fetchTasks]);
+
+  // Optimistic toggle completion
+  const handleToggleComplete = async (id: number, completed: boolean) => {
+    const previousTasks = [...tasks];
+    setTasks((prev) =>
+      prev.map((t) => (t.id === id ? { ...t, completed: completed ? 1 : 0 } : t))
+    );
+
+    try {
+      await toggleComplete(id, completed);
+    } catch (err) {
+      console.error("Failed to toggle task completion:", err);
+      // Revert optimistic update on failure
+      setTasks(previousTasks);
+    }
+  };
+
+  // Optimistic delete
+  const handleDeleteTask = async (id: number) => {
+    const previousTasks = [...tasks];
+    setTasks((prev) => prev.filter((t) => t.id !== id));
+
+    try {
+      await deleteTask(id);
+    } catch (err) {
+      console.error("Failed to delete task:", err);
+      // Revert on failure
+      setTasks(previousTasks);
+    }
+  };
+
+  // Save (Create or Update)
+  const handleSaveTask = async (taskData: NewTask, editId?: number) => {
+    if (editId) {
+      await updateTask(editId, taskData);
+    } else {
+      await addTask(taskData);
+    }
+
+    // Refresh if task date matches or switch to task date
+    if (taskData.date === selectedDate) {
+      await fetchTasks(selectedDate);
+    } else {
+      setSelectedDate(taskData.date);
+    }
+  };
+
+  const handleEditTask = (task: Task) => {
+    setEditingTask(task);
+    setIsAddTaskOpen(true);
+  };
+
+  const handleOpenAddModal = () => {
+    setEditingTask(null);
+    setIsAddTaskOpen(true);
+  };
+
+  // Filter tasks into anytime vs timed
+  const anytimeTasks = tasks.filter((t) => !t.time || t.time.trim() === "");
+  const timedTasks = tasks.filter((t) => t.time && t.time.trim() !== "");
 
   return (
-    <main className="container">
-      <h1>Welcome to Tauri + React</h1>
+    <div className="relative w-full h-full flex flex-col overflow-hidden text-white select-none">
+      {/* Dynamic ambient background with lighting */}
+      <div className="app-background" />
 
-      <div className="row">
-        <a href="https://vite.dev" target="_blank">
-          <img src="/vite.svg" className="logo vite" alt="Vite logo" />
-        </a>
-        <a href="https://tauri.app" target="_blank">
-          <img src="/tauri.svg" className="logo tauri" alt="Tauri logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
-      </div>
-      <p>Click on the Tauri, Vite, and React logos to learn more.</p>
+      {/* Custom Titlebar with native drag and window controls */}
+      <TitleBar onOpenAbout={() => setIsAboutOpen(true)} />
 
-      <form
-        className="row"
-        onSubmit={(e) => {
-          e.preventDefault();
-          greet();
-        }}
-      >
-        <input
-          id="greet-input"
-          onChange={(e) => setName(e.currentTarget.value)}
-          placeholder="Enter a name..."
+      {/* 7-day horizontal glass date strip */}
+      <DateStrip selectedDate={selectedDate} onSelectDate={setSelectedDate} />
+
+      {/* Main schedule view */}
+      <main className="relative z-10 flex-1 flex flex-col overflow-y-auto min-h-0">
+        {/* Anytime Tasks Section */}
+        <AnytimeSection
+          tasks={anytimeTasks}
+          onToggleComplete={handleToggleComplete}
+          onEdit={handleEditTask}
+          onDelete={handleDeleteTask}
         />
-        <button type="submit">Greet</button>
-      </form>
-      <p>{greetMsg}</p>
-    </main>
+
+        {/* Empty state hint when no tasks exist on this date */}
+        {!isLoading && tasks.length === 0 && (
+          <div className="px-4 py-8 flex flex-col items-center justify-center text-center">
+            <div className="w-10 h-10 rounded-2xl bg-white/[0.04] border border-white/[0.08] flex items-center justify-center text-indigo-400 mb-2.5">
+              <svg
+                className="w-5 h-5"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth={1.8}
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M12 6v6m0 0v6m0-6h6m-6 0H6"
+                />
+              </svg>
+            </div>
+            <p className="text-xs font-medium text-white/60">No tasks planned for this day</p>
+            <button
+              type="button"
+              onClick={handleOpenAddModal}
+              className="mt-2 text-xs text-indigo-400 hover:text-indigo-300 font-medium cursor-pointer"
+            >
+              + Add a task
+            </button>
+          </div>
+        )}
+
+        {/* Hourly Timeline */}
+        <Timeline
+          selectedDate={selectedDate}
+          tasks={timedTasks}
+          onToggleComplete={handleToggleComplete}
+          onEdit={handleEditTask}
+          onDelete={handleDeleteTask}
+        />
+      </main>
+
+      {/* Floating Add Task Action Button */}
+      <FloatingAddButton onClick={handleOpenAddModal} />
+
+      {/* Add / Edit Task Glass Modal */}
+      <AddTaskModal
+        isOpen={isAddTaskOpen}
+        selectedDate={selectedDate}
+        editingTask={editingTask}
+        onClose={() => {
+          setIsAddTaskOpen(false);
+          setEditingTask(null);
+        }}
+        onSave={handleSaveTask}
+      />
+
+      {/* About Developer Modal */}
+      <AboutModal isOpen={isAboutOpen} onClose={() => setIsAboutOpen(false)} />
+    </div>
   );
 }
 
