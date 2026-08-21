@@ -1,5 +1,6 @@
 import React, { useState, useRef } from "react";
 import { format } from "date-fns";
+import { invoke } from "@tauri-apps/api/core";
 import { exportAllTasksJson, importTasksFromJson } from "../lib/tasks";
 
 interface BackupModalProps {
@@ -31,22 +32,43 @@ export const BackupModal: React.FC<BackupModalProps> = ({
       setIsExporting(true);
       setStatusMessage(null);
       const jsonContent = await exportAllTasksJson();
-      const blob = new Blob([jsonContent], { type: "application/json" });
-      const url = URL.createObjectURL(blob);
-      const filename = `cluanote-backup-${format(new Date(), "yyyy-MM-dd_HH-mm")}.json`;
+      const defaultFilename = `cluanote-backup-${format(
+        new Date(),
+        "yyyy-MM-dd_HH-mm"
+      )}.json`;
 
-      const anchor = document.createElement("a");
-      anchor.href = url;
-      anchor.download = filename;
-      document.body.appendChild(anchor);
-      anchor.click();
-      document.body.removeChild(anchor);
-      URL.revokeObjectURL(url);
+      try {
+        // Native Windows Save As dialog
+        const savedPath = await invoke<string>("export_backup_file", {
+          content: jsonContent,
+          defaultFilename,
+        });
 
-      setStatusMessage({
-        type: "success",
-        text: `Backup exported successfully as "${filename}"!`,
-      });
+        setStatusMessage({
+          type: "success",
+          text: `Backup successfully saved to:\n${savedPath}`,
+        });
+      } catch (nativeErr) {
+        if (String(nativeErr).toLowerCase().includes("cancelled")) {
+          return;
+        }
+
+        // Web browser download fallback
+        const blob = new Blob([jsonContent], { type: "application/json" });
+        const url = URL.createObjectURL(blob);
+        const anchor = document.createElement("a");
+        anchor.href = url;
+        anchor.download = defaultFilename;
+        document.body.appendChild(anchor);
+        anchor.click();
+        document.body.removeChild(anchor);
+        URL.revokeObjectURL(url);
+
+        setStatusMessage({
+          type: "success",
+          text: `Backup exported as "${defaultFilename}"!`,
+        });
+      }
     } catch (err) {
       console.error("Backup export failed:", err);
       setStatusMessage({
@@ -58,7 +80,44 @@ export const BackupModal: React.FC<BackupModalProps> = ({
     }
   };
 
-  const handleFileSelected = async (
+  const handleImport = async () => {
+    try {
+      setIsImporting(true);
+      setStatusMessage(null);
+
+      try {
+        // Native Windows Open File dialog
+        const jsonContent = await invoke<string>("import_backup_file");
+        const count = await importTasksFromJson(jsonContent);
+
+        setStatusMessage({
+          type: "success",
+          text: `Successfully restored ${count} task(s) from backup!`,
+        });
+
+        onDataRestored();
+      } catch (nativeErr) {
+        if (String(nativeErr).toLowerCase().includes("cancelled")) {
+          return;
+        }
+        // Fallback to web file picker
+        fileInputRef.current?.click();
+      }
+    } catch (err) {
+      console.error("Backup import failed:", err);
+      setStatusMessage({
+        type: "error",
+        text:
+          err instanceof Error
+            ? err.message
+            : "Failed to parse or import backup file",
+      });
+    } finally {
+      setIsImporting(false);
+    }
+  };
+
+  const handleWebFileSelected = async (
     e: React.ChangeEvent<HTMLInputElement>
   ) => {
     const file = e.target.files?.[0];
@@ -154,14 +213,18 @@ export const BackupModal: React.FC<BackupModalProps> = ({
         {/* Status Notification */}
         {statusMessage && (
           <div
-            className={`mb-3.5 px-3 py-2 rounded-xl text-xs flex items-center space-x-2 ${
+            className={`mb-3.5 px-3 py-2 rounded-xl text-xs flex items-start space-x-2 ${
               statusMessage.type === "success"
                 ? "bg-emerald-500/20 border border-emerald-500/30 text-emerald-300"
                 : "bg-rose-500/20 border border-rose-500/30 text-rose-300"
             }`}
           >
-            <span>{statusMessage.type === "success" ? "✓" : "⚠"}</span>
-            <span>{statusMessage.text}</span>
+            <span className="shrink-0 mt-0.5">
+              {statusMessage.type === "success" ? "✓" : "⚠"}
+            </span>
+            <span className="break-all whitespace-pre-line">
+              {statusMessage.text}
+            </span>
           </div>
         )}
 
@@ -185,7 +248,7 @@ export const BackupModal: React.FC<BackupModalProps> = ({
             <div>
               <p className="text-xs font-semibold text-white/90">Export Backup</p>
               <p className="text-[10px] text-white/50 mt-0.5">
-                Save all tasks to a .json file on your computer.
+                Opens native Save dialog to choose folder and filename.
               </p>
             </div>
             <button
@@ -194,7 +257,7 @@ export const BackupModal: React.FC<BackupModalProps> = ({
               disabled={isExporting}
               className="w-full py-1.5 text-xs rounded-xl glass-button-primary cursor-pointer disabled:opacity-50"
             >
-              {isExporting ? "Exporting..." : "Export Backup (.json)"}
+              {isExporting ? "Exporting..." : "Save Backup (.json)"}
             </button>
           </div>
 
@@ -203,7 +266,7 @@ export const BackupModal: React.FC<BackupModalProps> = ({
             <div>
               <p className="text-xs font-semibold text-white/90">Import Backup</p>
               <p className="text-[10px] text-white/50 mt-0.5">
-                Restore tasks from an exported .json file.
+                Opens File Explorer to select and restore a .json file.
               </p>
             </div>
             <div>
@@ -211,16 +274,16 @@ export const BackupModal: React.FC<BackupModalProps> = ({
                 ref={fileInputRef}
                 type="file"
                 accept=".json,application/json"
-                onChange={handleFileSelected}
+                onChange={handleWebFileSelected}
                 className="hidden"
               />
               <button
                 type="button"
-                onClick={() => fileInputRef.current?.click()}
+                onClick={handleImport}
                 disabled={isImporting}
                 className="w-full py-1.5 text-xs rounded-xl glass-button cursor-pointer disabled:opacity-50 text-white/90 hover:text-white"
               >
-                {isImporting ? "Importing..." : "Import File (.json)"}
+                {isImporting ? "Importing..." : "Choose File (.json)"}
               </button>
             </div>
           </div>

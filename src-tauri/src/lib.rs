@@ -7,6 +7,35 @@ use tauri::{
     Manager, WindowEvent,
 };
 
+#[tauri::command]
+fn export_backup_file(content: String, default_filename: String) -> Result<String, String> {
+    let file = rfd::FileDialog::new()
+        .set_file_name(&default_filename)
+        .add_filter("JSON Backup", &["json"])
+        .save_file();
+
+    if let Some(path) = file {
+        std::fs::write(&path, content).map_err(|e| e.to_string())?;
+        Ok(path.to_string_lossy().to_string())
+    } else {
+        Err("Export cancelled by user".to_string())
+    }
+}
+
+#[tauri::command]
+fn import_backup_file() -> Result<String, String> {
+    let file = rfd::FileDialog::new()
+        .add_filter("JSON Backup", &["json"])
+        .pick_file();
+
+    if let Some(path) = file {
+        let content = std::fs::read_to_string(&path).map_err(|e| e.to_string())?;
+        Ok(content)
+    } else {
+        Err("Import cancelled by user".to_string())
+    }
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -17,6 +46,10 @@ pub fn run() {
             tauri_plugin_autostart::MacosLauncher::LaunchAgent,
             Some(vec![]),
         ))
+        .invoke_handler(tauri::generate_handler![
+            export_backup_file,
+            import_backup_file
+        ])
         .on_window_event(|window, event| {
             // Intercept window close: prevent exit and hide window to background tray
             if let WindowEvent::CloseRequested { api, .. } = event {

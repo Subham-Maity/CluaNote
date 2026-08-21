@@ -17,7 +17,12 @@ import {
   deleteTask,
   toggleComplete,
 } from "./lib/tasks";
-import { isAlarmEnabled, checkTaskAlarms } from "./lib/alarm";
+import {
+  isAlarmEnabled,
+  checkTaskAlarms,
+  stopAlarmSound,
+  setAlarmTriggerListener,
+} from "./lib/alarm";
 import { sendTaskNotification } from "./lib/notifications";
 import type { Task, NewTask } from "./types/task";
 
@@ -32,6 +37,7 @@ export function App() {
   const [isAlarmOpen, setIsAlarmOpen] = useState(false);
   const [isBackupOpen, setIsBackupOpen] = useState(false);
   const [isAlarmActive, setIsAlarmActive] = useState(() => isAlarmEnabled());
+  const [activeAlarmTitle, setActiveAlarmTitle] = useState<string | null>(null);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
 
   // Zoom via Tauri native webview API (Ctrl+/- handled by zoomHotkeysEnabled in tauri.conf.json)
@@ -94,6 +100,10 @@ export function App() {
 
   // Background Alarm Checker: runs every 10 seconds across all database tasks
   useEffect(() => {
+    setAlarmTriggerListener((title) => {
+      setActiveAlarmTitle(title);
+    });
+
     const alarmInterval = setInterval(async () => {
       try {
         if (isAlarmEnabled()) {
@@ -185,6 +195,33 @@ export function App() {
         onOpenBackup={() => setIsBackupOpen(true)}
         isAlarmActive={isAlarmActive}
       />
+
+      {/* Floating Active Alarm Notification Banner */}
+      {activeAlarmTitle && (
+        <div className="fixed top-13 left-1/2 -translate-x-1/2 z-50 px-4 py-2.5 rounded-2xl bg-indigo-950/90 border border-indigo-500/60 shadow-2xl shadow-indigo-500/50 backdrop-blur-xl flex items-center space-x-3.5 animate-scale-up">
+          <div className="flex items-center space-x-2">
+            <span className="text-base animate-bounce">🔔</span>
+            <div className="text-left">
+              <p className="text-[10px] text-indigo-300 uppercase font-semibold tracking-wider">
+                Alarm Ringing
+              </p>
+              <p className="text-xs font-bold text-white max-w-[200px] truncate">
+                {activeAlarmTitle}
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              stopAlarmSound();
+              setActiveAlarmTitle(null);
+            }}
+            className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-indigo-500 to-violet-500 hover:from-indigo-600 hover:to-violet-600 text-white text-xs font-bold shadow-md cursor-pointer transition-transform active:scale-95"
+          >
+            ⏹ Stop Alarm
+          </button>
+        </div>
+      )}
 
       {/* 7-day horizontal glass date strip */}
       <DateStrip selectedDate={selectedDate} onSelectDate={setSelectedDate} />

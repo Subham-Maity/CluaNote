@@ -29,8 +29,8 @@ export const Timeline: React.FC<TimelineProps> = ({
     return () => clearInterval(timer);
   }, []);
 
-  // Generate hours from 06:00 to 23:00
-  const hours = Array.from({ length: 18 }, (_, i) => i + 6);
+  // Generate all 24 hours (00:00 to 23:00)
+  const hours = Array.from({ length: 24 }, (_, i) => i);
 
   // Group tasks by hour string 'HH'
   const tasksByHour = tasks.reduce<Record<number, Task[]>>((acc, task) => {

@@ -7,6 +7,7 @@ const CUSTOM_SOUND_KEY = "cluanote_custom_sound";
 
 let alertedTaskSet = new Set<string>();
 let activeAudio: HTMLAudioElement | null = null;
+let onAlarmCallback: ((taskTitle: string) => void) | null = null;
 
 export function isAlarmEnabled(): boolean {
   const stored = localStorage.getItem(ALARM_ENABLED_KEY);
@@ -29,6 +30,12 @@ export function setCustomSound(dataUrl: string | null): void {
   }
 }
 
+export function setAlarmTriggerListener(
+  callback: (taskTitle: string) => void
+): void {
+  onAlarmCallback = callback;
+}
+
 export function playAlarmSound(): void {
   try {
     if (activeAudio) {
@@ -38,8 +45,9 @@ export function playAlarmSound(): void {
     const soundSrc = getCustomSound() || "/tingting.mp3";
     activeAudio = new Audio(soundSrc);
     activeAudio.volume = 0.9;
+    activeAudio.loop = true; // Loop until user stops it
     activeAudio.play().catch((err) => {
-      console.warn("Audio play blocked or unavailable:", err);
+      console.warn("Audio play notice:", err);
     });
   } catch (err) {
     console.warn("Failed to play alarm audio:", err);
@@ -78,8 +86,12 @@ export function checkTaskAlarms(tasks: Task[]): void {
       if (!alertedTaskSet.has(alertKey)) {
         alertedTaskSet.add(alertKey);
 
-        // Play alarm sound
+        // Play alarm sound (loops until stopped)
         playAlarmSound();
+
+        if (onAlarmCallback) {
+          onAlarmCallback(task.title);
+        }
 
         // Send Windows desktop notification
         sendTaskNotification(
@@ -90,7 +102,7 @@ export function checkTaskAlarms(tasks: Task[]): void {
     }
   }
 
-  // Prevent set from growing infinitely: keep only alerts from the last 20 items
+  // Prevent set from growing infinitely
   if (alertedTaskSet.size > 50) {
     alertedTaskSet = new Set(Array.from(alertedTaskSet).slice(-20));
   }
