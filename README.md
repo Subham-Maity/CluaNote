@@ -1,6 +1,9 @@
 # CluaNote
 
-**A native desktop task planner built on Rust and WebView2. Fast, private, and free.**
+<img width="708" height="489" alt="ss" src="https://github.com/user-attachments/assets/00795cf1-514f-46af-a459-77c0d93b06cb" />
+
+
+**A native desktop task planner built on Rust. Fast, private, and free.**
 
 [![Build](https://github.com/Subham-Maity/CluaNote/actions/workflows/build.yml/badge.svg)](https://github.com/Subham-Maity/CluaNote/actions/workflows/build.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](./LICENSE)
