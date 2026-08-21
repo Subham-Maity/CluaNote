@@ -44,9 +44,9 @@
       "icons/icon.ico"
     ],
     "windows": {
-      "certificateThumbprint": null,
-      "digestAlgorithm": "sha256",
-      "timestampUrl": "http://timestamp.sectigo.com"
+      "certificateThumbprint": "E3E16BCF7E5F7DD61C6CBA9009B4C001E18D07CA",
+      "digestAlgorithm": "SHA256",
+      "timestampUrl": "http://timestamp.digicert.com"
     }
   }
 }
