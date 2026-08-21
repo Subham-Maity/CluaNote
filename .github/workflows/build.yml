@@ -1,17 +1,13 @@
-name: Release and Matrix Build
+name: Release
 
 on:
   push:
-    branches:
-      - main
     tags:
       - 'v*'
-  pull_request:
-    branches:
-      - main
+  workflow_dispatch:
 
 jobs:
-  build:
+  release:
     permissions:
       contents: write
     strategy:
@@ -19,8 +15,13 @@ jobs:
       matrix:
         include:
           - platform: 'windows-latest'
+            args: ''
           - platform: 'macos-latest'
-          - platform: 'ubuntu-latest'
+            args: '--target aarch64-apple-darwin'
+          - platform: 'macos-latest'
+            args: '--target x86_64-apple-darwin'
+          - platform: 'ubuntu-22.04'
+            args: ''
 
     runs-on: ${{ matrix.platform }}
     steps:
@@ -35,23 +36,50 @@ jobs:
 
       - name: Install Rust stable
         uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.platform == 'macos-latest' && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
 
-      - name: Install Linux dependencies
-        if: matrix.platform == 'ubuntu-latest'
+      - name: Install Linux system dependencies
+        if: matrix.platform == 'ubuntu-22.04'
         run: |
           sudo apt-get update
-          sudo apt-get install -y libwebkit2gtk-4.1-dev libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev
+          sudo apt-get install -y \
+            libwebkit2gtk-4.1-dev \
+            libxdo-dev \
+            libssl-dev \
+            libayatana-appindicator3-dev \
+            librsvg2-dev
 
       - name: Install npm dependencies
         run: npm ci
 
-      - name: Build Tauri Desktop Bundle
-        run: npm run tauri build
-
-      - name: Upload Build Artifacts
-        uses: actions/upload-artifact@v4
+      - name: Build Tauri app and publish GitHub Release
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          name: cluanote-${{ matrix.platform }}
-          path: |
-            src-tauri/target/release/bundle/
-          if-no-files-found: warn
+          tagName: ${{ github.ref_name }}
+          releaseName: 'CluaNote ${{ github.ref_name }}'
+          releaseBody: |
+            ## CluaNote ${{ github.ref_name }}
+
+            A fast, minimalist, dark glassmorphic desktop task planner.
+
+            ### Download
+
+            | Platform | File | Notes |
+            |---|---|---|
+            | **Windows** | `cluanote_*_x64-setup.exe` | NSIS installer (recommended) |
+            | **Windows** | `cluanote_*_x64_en-US.msi` | MSI installer |
+            | **macOS (Apple Silicon)** | `cluanote_*_aarch64.dmg` | M1/M2/M3 Macs |
+            | **macOS (Intel)** | `cluanote_*_x64.dmg` | Intel Macs |
+            | **Linux** | `cluanote_*_amd64.AppImage` | Universal Linux (recommended) |
+            | **Linux** | `cluanote_*_amd64.deb` | Debian / Ubuntu |
+
+            ### Requirements
+            - **Windows**: WebView2 Runtime (pre-installed on Windows 10/11)
+            - **macOS**: macOS 10.15+
+            - **Linux**: A compositor for glass transparency effect
+          releaseDraft: false
+          prerelease: false
+          args: ${{ matrix.args }}
