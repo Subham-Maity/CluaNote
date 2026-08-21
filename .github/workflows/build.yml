@@ -53,15 +53,31 @@ jobs:
       - name: Install npm dependencies
         run: npm ci
 
+      # Windows Authenticode signing via certificate store
+      # Requires WINDOWS_CERTIFICATE (base64-encoded .pfx) and WINDOWS_CERTIFICATE_PASSWORD
+      # set as secrets in: GitHub repo -> Settings -> Secrets and variables -> Actions
+      - name: Import Windows code signing certificate
+        if: matrix.platform == 'windows-latest'
+        env:
+          WINDOWS_CERTIFICATE: ${{ secrets.WINDOWS_CERTIFICATE }}
+          WINDOWS_CERTIFICATE_PASSWORD: ${{ secrets.WINDOWS_CERTIFICATE_PASSWORD }}
+        run: |
+          New-Item -ItemType Directory -Force -Path certificate
+          Set-Content -Path certificate/tempCert.txt -Value $env:WINDOWS_CERTIFICATE
+          certutil -decode certificate/tempCert.txt certificate/certificate.pfx
+          Remove-Item certificate/tempCert.txt
+          Import-PfxCertificate `
+            -FilePath certificate/certificate.pfx `
+            -CertStoreLocation Cert:\CurrentUser\My `
+            -Password (ConvertTo-SecureString `
+              -String $env:WINDOWS_CERTIFICATE_PASSWORD `
+              -Force `
+              -AsPlainText)
+
       - name: Build Tauri app and publish GitHub Release
         uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          # Windows code signing (add these secrets to your GitHub repository settings)
-          # Generate with: openssl pkcs12 -export -in cert.pem -inkey key.pem -out cert.pfx
-          # Then base64-encode: certutil -encode cert.pfx cert.b64 (Windows) or base64 cert.pfx (Mac/Linux)
-          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
-          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         with:
           tagName: ${{ github.ref_name }}
           releaseName: 'CluaNote ${{ github.ref_name }}'
