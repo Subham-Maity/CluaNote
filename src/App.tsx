@@ -115,6 +115,12 @@ export function App() {
       await updateTask(editId, taskData);
     } else {
       await addTask(taskData);
+      // Send desktop notification for new task
+      const { sendTaskNotification } = await import("./lib/notifications");
+      sendTaskNotification(
+        taskData.title,
+        taskData.time ? `Scheduled for ${taskData.time}` : "Added to Anytime tasks"
+      );
     }
 
     // Refresh if task date matches or switch to task date

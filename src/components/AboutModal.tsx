@@ -1,5 +1,9 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { openUrl } from "@tauri-apps/plugin-opener";
+import {
+  checkAutostartStatus,
+  toggleAutostartPreference,
+} from "../lib/autostart";
 
 interface AboutModalProps {
   isOpen: boolean;
@@ -7,9 +11,22 @@ interface AboutModalProps {
 }
 
 export const AboutModal: React.FC<AboutModalProps> = ({ isOpen, onClose }) => {
+  const [isAutostart, setIsAutostart] = useState(false);
+
+  useEffect(() => {
+    if (isOpen) {
+      checkAutostartStatus().then(setIsAutostart);
+    }
+  }, [isOpen]);
+
   if (!isOpen) {
     return null;
   }
+
+  const handleToggleAutostart = async () => {
+    const newState = await toggleAutostartPreference();
+    setIsAutostart(newState);
+  };
 
   const handleOpenLink = async (url: string) => {
     try {
@@ -69,11 +86,32 @@ export const AboutModal: React.FC<AboutModalProps> = ({ isOpen, onClose }) => {
         </div>
 
         <h2 className="text-lg font-bold text-white tracking-wide">CluaNote</h2>
-        <p className="text-xs text-white/50 mt-0.5">Version 0.1.0</p>
+        <p className="text-xs text-white/50 mt-0.5">Version 0.2.1</p>
 
-        <p className="text-xs text-white/70 mt-3 leading-relaxed">
+        <p className="text-xs text-white/70 mt-2.5 leading-relaxed">
           A fast, minimalist, dark glassmorphic desktop task planner built for focus and speed.
         </p>
+
+        {/* Preferences / Autostart Section */}
+        <div className="mt-4 p-3 rounded-xl bg-white/[0.03] border border-white/[0.07] flex items-center justify-between">
+          <div className="text-left">
+            <p className="text-xs font-medium text-white/90">Launch on Startup</p>
+            <p className="text-[10px] text-white/40">Start CluaNote when your PC boots</p>
+          </div>
+          <button
+            type="button"
+            onClick={handleToggleAutostart}
+            className={`w-9 h-5 rounded-full transition-colors relative cursor-pointer ${
+              isAutostart ? "bg-indigo-600" : "bg-white/20"
+            }`}
+          >
+            <span
+              className={`block w-3.5 h-3.5 rounded-full bg-white transition-transform ${
+                isAutostart ? "translate-x-4.5" : "translate-x-0.5"
+              }`}
+            />
+          </button>
+        </div>
 
         <div className="my-4 h-px bg-white/[0.08]" />
 
@@ -111,7 +149,7 @@ export const AboutModal: React.FC<AboutModalProps> = ({ isOpen, onClose }) => {
         </div>
 
         {/* Footer Note */}
-        <p className="text-[10px] text-white/30 mt-5">
+        <p className="text-[10px] text-white/30 mt-4">
           Licensed under MIT Open Source
         </p>
       </div>

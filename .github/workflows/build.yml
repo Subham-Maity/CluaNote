@@ -84,23 +84,33 @@ jobs:
           releaseBody: |
             ## CluaNote ${{ github.ref_name }}
 
-            A fast, minimalist, dark glassmorphic desktop task planner.
+            A fast, minimalist, dark glassmorphic desktop task planner built on Rust and WebView2.
 
-            ### Download
+            ### What's in this Release
 
-            | Platform | File | Notes |
+            - **Day & Time Scheduling:** 7-day strip navigation, untimed Anytime tasks, and a vertical hourly timeline (06:00–23:00) with a live pulsating current-time indicator.
+            - **Local-First & Zero Latency:** Fast on-device SQLite persistence with optimistic UI updates. Zero cloud dependencies, zero telemetry, and 100% privacy.
+            - **Glassmorphic Dark Interface:** Frameless transparent window with Tailwind CSS v4 design tokens, ambient lighting, and native OS window vibrancy (`window-vibrancy`).
+            - **System Tray Icon:** Built-in system tray with click-to-focus and background quick menu (Show CluaNote / Quit).
+            - **Desktop Notifications:** Native OS notification reminders when new tasks are scheduled.
+            - **Launch on Startup:** Optional autostart toggle on boot via `tauri-plugin-autostart`.
+            - **Window Controls & Native Zoom:** Full title bar drag support, double-click maximize/restore, multi-edge resizing, and native WebView zoom (<kbd>Ctrl</kbd> + <kbd>+</kbd> / <kbd>-</kbd> / <kbd>0</kbd>).
+
+            ### Downloads
+
+            | Platform | Package | Description |
             |---|---|---|
             | **Windows** | `cluanote_*_x64-setup.exe` | NSIS installer (recommended) |
-            | **Windows** | `cluanote_*_x64_en-US.msi` | MSI installer |
-            | **macOS (Apple Silicon)** | `cluanote_*_aarch64.dmg` | M1/M2/M3 Macs |
-            | **macOS (Intel)** | `cluanote_*_x64.dmg` | Intel Macs |
-            | **Linux** | `cluanote_*_amd64.AppImage` | Universal Linux (recommended) |
-            | **Linux** | `cluanote_*_amd64.deb` | Debian / Ubuntu |
+            | **Windows** | `cluanote_*_x64_en-US.msi` | Windows Installer (MSI) |
+            | **macOS (Apple Silicon)** | `cluanote_*_aarch64.dmg` | M1 / M2 / M3 / M4 Macs |
+            | **macOS (Intel)** | `cluanote_*_x64.dmg` | Intel-based Macs |
+            | **Linux** | `cluanote_*_amd64.AppImage` | Universal standalone Linux bundle |
+            | **Linux** | `cluanote_*_amd64.deb` | Debian / Ubuntu package |
 
             ### Requirements
-            - **Windows**: WebView2 Runtime (pre-installed on Windows 10/11)
-            - **macOS**: macOS 10.15+
-            - **Linux**: A compositor for glass transparency effect
+            - **Windows:** WebView2 Runtime (included in Windows 10 & 11)
+            - **macOS:** macOS 10.15+
+            - **Linux:** Desktop compositor for native glass transparency
           releaseDraft: false
           prerelease: false
           args: ${{ matrix.args }}
