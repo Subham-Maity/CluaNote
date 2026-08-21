@@ -1,6 +1,6 @@
 [package]
 name = "cluanote"
-version = "0.1.0"
+version = "0.2.1"
 description = "A Tauri App"
 authors = ["Subham Maity <https://github.com/Subham-Maity>"]
 edition = "2021"
