@@ -10,6 +10,7 @@ import { AboutModal } from "./components/AboutModal";
 import { AlarmModal } from "./components/AlarmModal";
 import { BackupModal } from "./components/BackupModal";
 import { UpdateBanner } from "./components/UpdateBanner";
+import { UpdateModal } from "./components/UpdateModal";
 import { ReleaseNotesModal } from "./components/ReleaseNotesModal";
 import { PendingHistoryModal } from "./components/PendingHistoryModal";
 import { PendingReminderBanner } from "./components/PendingReminderBanner";
@@ -51,6 +52,7 @@ export function App() {
   // Feature 1: Update checker
   const [updateInfo, setUpdateInfo] = useState<UpdateCheckResult | null>(null);
   const [showUpdateBanner, setShowUpdateBanner] = useState(false);
+  const [isUpdateModalOpen, setIsUpdateModalOpen] = useState(false);
   const [isReleaseNotesOpen, setIsReleaseNotesOpen] = useState(false);
 
   // Feature 2: Pending task history
@@ -292,13 +294,7 @@ export function App() {
         isAlarmActive={isAlarmActive}
         pendingCount={pendingCount}
         updateAvailable={updateInfo?.hasUpdate ?? false}
-        onCheckUpdate={() => {
-          if (updateInfo?.hasUpdate) {
-            setShowUpdateBanner(true);
-          } else {
-            setIsReleaseNotesOpen(true);
-          }
-        }}
+        onCheckUpdate={() => setIsUpdateModalOpen(true)}
       />
 
       {/* Floating Active Alarm Notification Banner */}
@@ -432,6 +428,16 @@ export function App() {
 
       {/* About Developer Modal */}
       <AboutModal isOpen={isAboutOpen} onClose={() => setIsAboutOpen(false)} />
+
+      {/* Software Update Modal */}
+      <UpdateModal
+        isOpen={isUpdateModalOpen}
+        onClose={() => setIsUpdateModalOpen(false)}
+        onOpenReleaseNotes={() => {
+          setIsUpdateModalOpen(false);
+          setIsReleaseNotesOpen(true);
+        }}
+      />
 
       {/* Release Notes / Changelog Modal */}
       <ReleaseNotesModal

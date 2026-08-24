@@ -23,12 +23,23 @@ export interface GitHubRelease {
   draft: boolean;
 }
 
+export interface ReleaseAsset {
+  name: string;
+  browser_download_url: string;
+  size: number;
+}
+
 export interface UpdateCheckResult {
   hasUpdate: boolean;
   latestVersion: string;
+  currentVersion: string;
+  releaseName: string;
   releaseUrl: string;
   releaseBody: string;
   publishedAt: string;
+  assets: ReleaseAsset[];
+  directDownloadUrl?: string;
+  directDownloadName?: string;
 }
 
 /**
@@ -62,13 +73,15 @@ const RELEASES_CACHE_KEY = "cluanote_all_releases";
 
 /**
  * Checks for a newer release on GitHub.
- * Caches result in sessionStorage so it only fetches once per session.
+ * @param force If true, bypasses sessionStorage cache and queries GitHub API fresh.
  */
-export async function checkForUpdate(): Promise<UpdateCheckResult> {
+export async function checkForUpdate(force = false): Promise<UpdateCheckResult> {
   try {
-    const cached = sessionStorage.getItem(SESSION_CACHE_KEY);
-    if (cached) {
-      return JSON.parse(cached) as UpdateCheckResult;
+    if (!force) {
+      const cached = sessionStorage.getItem(SESSION_CACHE_KEY);
+      if (cached) {
+        return JSON.parse(cached) as UpdateCheckResult;
+      }
     }
 
     const response = await fetch(
@@ -87,12 +100,32 @@ export async function checkForUpdate(): Promise<UpdateCheckResult> {
     const latestVersion = release.tag_name;
     const hasUpdate = isNewerVersion(latestVersion, CURRENT_VERSION);
 
+    // Try to find a direct installer asset (e.g. .exe / .msi for Windows, .dmg for macOS, .AppImage for Linux)
+    const assets: ReleaseAsset[] = (release.assets || []).map((a) => ({
+      name: a.name,
+      browser_download_url: a.browser_download_url,
+      size: a.size,
+    }));
+
+    // Detect best match: Windows .exe installer first, then .msi, etc.
+    const directAsset =
+      assets.find((a) => a.name.endsWith(".exe") || a.name.endsWith("-setup.exe")) ||
+      assets.find((a) => a.name.endsWith(".msi")) ||
+      assets.find((a) => a.name.endsWith(".dmg")) ||
+      assets.find((a) => a.name.endsWith(".AppImage") || a.name.endsWith(".deb")) ||
+      assets[0];
+
     const result: UpdateCheckResult = {
       hasUpdate,
       latestVersion,
+      currentVersion: CURRENT_VERSION,
+      releaseName: release.name || release.tag_name,
       releaseUrl: release.html_url,
       releaseBody: release.body || "",
       publishedAt: release.published_at,
+      assets,
+      directDownloadUrl: directAsset?.browser_download_url,
+      directDownloadName: directAsset?.name,
     };
 
     sessionStorage.setItem(SESSION_CACHE_KEY, JSON.stringify(result));
@@ -102,9 +135,12 @@ export async function checkForUpdate(): Promise<UpdateCheckResult> {
     return {
       hasUpdate: false,
       latestVersion: CURRENT_VERSION,
-      releaseUrl: "",
+      currentVersion: CURRENT_VERSION,
+      releaseName: `v${CURRENT_VERSION}`,
+      releaseUrl: `https://github.com/${GITHUB_REPO}/releases`,
       releaseBody: "",
       publishedAt: "",
+      assets: [],
     };
   }
 }

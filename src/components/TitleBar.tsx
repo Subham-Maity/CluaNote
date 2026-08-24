@@ -114,11 +114,11 @@ export function TitleBar({
 
       {/* Right: Window & Feature controls */}
       <div className="flex items-center space-x-1">
-        {/* Update Available indicator button */}
+        {/* Update Available / Check for Updates button */}
         <button
           type="button"
           onClick={onCheckUpdate}
-          title={updateAvailable ? "Update Available — click to view" : "CluaNote is up to date"}
+          title={updateAvailable ? "Update Available — click to view & download" : "Check for Updates"}
           className="relative w-8 h-8 rounded-md flex items-center justify-center text-white/70 hover:text-white hover:bg-white/[0.08] transition-colors cursor-pointer"
         >
           <svg
@@ -131,7 +131,7 @@ export function TitleBar({
             <path
               strokeLinecap="round"
               strokeLinejoin="round"
-              d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4-4m0 0l-4 4m4-4v12"
+              d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
             />
           </svg>
           {updateAvailable && (
