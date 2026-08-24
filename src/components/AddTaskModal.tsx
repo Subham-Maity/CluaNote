@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import type { NewTask, Task, TaskPriority } from "../types/task";
 import clsx from "clsx";
+import { MarkdownNoteEditor } from "./MarkdownNoteEditor";
 
 interface AddTaskModalProps {
   isOpen: boolean;
@@ -208,17 +209,16 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({
             </div>
           </div>
 
-          {/* Note input */}
+          {/* Note input — Markdown editor with Write/Preview */}
           <div>
             <label className="block text-xs font-medium text-white/70 mb-1">
-              Note (optional)
+              Note{" "}
+              <span className="text-white/30 font-normal">(optional · supports markdown)</span>
             </label>
-            <textarea
-              rows={2}
+            <MarkdownNoteEditor
               value={note}
-              onChange={(e) => setNote(e.target.value)}
-              placeholder="Additional details or links..."
-              className="w-full px-3 py-2 text-xs glass-input resize-none"
+              onChange={setNote}
+              placeholder="Add notes, links, or **markdown** content..."
             />
           </div>
 

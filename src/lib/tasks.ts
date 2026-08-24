@@ -33,6 +33,37 @@ export async function getAllTasks(): Promise<Task[]> {
 }
 
 /**
+ * Fetches all incomplete (pending) tasks across all dates.
+ * Used by the Pending History modal. Results ordered by date DESC then time ASC.
+ */
+export async function getPendingTasks(): Promise<Task[]> {
+  const db = await getDb();
+  const rows = await db.select<Task[]>(
+    `SELECT id, title, note, date, time, priority, completed, created_at 
+     FROM tasks 
+     WHERE completed = 0
+     ORDER BY date DESC, time ASC, id ASC`
+  );
+  return rows;
+}
+
+/**
+ * Fetches all incomplete tasks from yesterday.
+ * Used by the Pending Reminder Banner shown on app open.
+ */
+export async function getYesterdayPendingTasks(): Promise<Task[]> {
+  const db = await getDb();
+  const rows = await db.select<Task[]>(
+    `SELECT id, title, note, date, time, priority, completed, created_at 
+     FROM tasks 
+     WHERE completed = 0
+       AND date = date('now', '-1 day')
+     ORDER BY time ASC, id ASC`
+  );
+  return rows;
+}
+
+/**
  * Inserts a new task into SQLite.
  */
 export async function addTask(task: NewTask): Promise<void> {
@@ -140,7 +171,7 @@ export async function exportAllTasksJson(): Promise<string> {
   const tasks = await getAllTasks();
   const backup = {
     appName: "CluaNote",
-    version: "0.2.1",
+    version: "0.3.0",
     exportedAt: new Date().toISOString(),
     totalTasks: tasks.length,
     tasks,

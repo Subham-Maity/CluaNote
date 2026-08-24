@@ -9,6 +9,10 @@ import { AddTaskModal } from "./components/AddTaskModal";
 import { AboutModal } from "./components/AboutModal";
 import { AlarmModal } from "./components/AlarmModal";
 import { BackupModal } from "./components/BackupModal";
+import { UpdateBanner } from "./components/UpdateBanner";
+import { ReleaseNotesModal } from "./components/ReleaseNotesModal";
+import { PendingHistoryModal } from "./components/PendingHistoryModal";
+import { PendingReminderBanner } from "./components/PendingReminderBanner";
 import {
   getTasks,
   getAllTasks,
@@ -16,6 +20,8 @@ import {
   updateTask,
   deleteTask,
   toggleComplete,
+  getPendingTasks,
+  getYesterdayPendingTasks,
 } from "./lib/tasks";
 import {
   isAlarmEnabled,
@@ -24,7 +30,9 @@ import {
   setAlarmTriggerListener,
 } from "./lib/alarm";
 import { sendTaskNotification } from "./lib/notifications";
+import { checkForUpdate } from "./lib/updater";
 import type { Task, NewTask } from "./types/task";
+import type { UpdateCheckResult } from "./lib/updater";
 
 export function App() {
   const [selectedDate, setSelectedDate] = useState<string>(() =>
@@ -39,6 +47,19 @@ export function App() {
   const [isAlarmActive, setIsAlarmActive] = useState(() => isAlarmEnabled());
   const [activeAlarmTitle, setActiveAlarmTitle] = useState<string | null>(null);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
+
+  // Feature 1: Update checker
+  const [updateInfo, setUpdateInfo] = useState<UpdateCheckResult | null>(null);
+  const [showUpdateBanner, setShowUpdateBanner] = useState(false);
+  const [isReleaseNotesOpen, setIsReleaseNotesOpen] = useState(false);
+
+  // Feature 2: Pending task history
+  const [isPendingHistoryOpen, setIsPendingHistoryOpen] = useState(false);
+  const [pendingCount, setPendingCount] = useState(0);
+
+  // Feature 3: Yesterday reminder banner
+  const [reminderTasks, setReminderTasks] = useState<Task[]>([]);
+  const [showReminderBanner, setShowReminderBanner] = useState(false);
 
   // Zoom via Tauri native webview API (Ctrl+/- handled by zoomHotkeysEnabled in tauri.conf.json)
   useEffect(() => {
@@ -80,6 +101,41 @@ export function App() {
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, []);
+
+  // Feature 1: Check for updates on app mount (non-blocking)
+  useEffect(() => {
+    checkForUpdate().then((result) => {
+      setUpdateInfo(result);
+      if (result.hasUpdate) {
+        setShowUpdateBanner(true);
+      }
+    });
+  }, []);
+
+  // Feature 2 + 3: Load pending task counts and yesterday reminders on mount
+  const refreshPendingState = useCallback(async () => {
+    try {
+      const all = await getPendingTasks();
+      setPendingCount(all.length);
+
+      const yesterday = await getYesterdayPendingTasks();
+      // Filter out tasks the user dismissed (stored per-task in localStorage)
+      const dismissed = new Set<number>(
+        JSON.parse(localStorage.getItem("dismissed_reminder_tasks") || "[]")
+      );
+      const visible = yesterday.filter((t) => !dismissed.has(t.id));
+      setReminderTasks(visible);
+      if (visible.length > 0) {
+        setShowReminderBanner(true);
+      }
+    } catch (err) {
+      console.warn("Could not load pending task state:", err);
+    }
+  }, []);
+
+  useEffect(() => {
+    refreshPendingState();
+  }, [refreshPendingState]);
 
   // Fetch tasks whenever selectedDate changes
   const fetchTasks = useCallback(async (date: string) => {
@@ -127,6 +183,7 @@ export function App() {
 
     try {
       await toggleComplete(id, completed);
+      refreshPendingState();
     } catch (err) {
       console.error("Failed to toggle task completion:", err);
       // Revert optimistic update on failure
@@ -141,6 +198,7 @@ export function App() {
 
     try {
       await deleteTask(id);
+      refreshPendingState();
     } catch (err) {
       console.error("Failed to delete task:", err);
       // Revert on failure
@@ -167,6 +225,8 @@ export function App() {
     } else {
       setSelectedDate(taskData.date);
     }
+    // Refresh pending state after any save
+    refreshPendingState();
   };
 
   const handleEditTask = (task: Task) => {
@@ -177,6 +237,40 @@ export function App() {
   const handleOpenAddModal = () => {
     setEditingTask(null);
     setIsAddTaskOpen(true);
+  };
+
+  // Feature 3: Reminder banner handlers
+  const handleDismissReminderTask = (taskId: number) => {
+    // Persist dismissal to localStorage so it survives page refreshes
+    const dismissed: number[] = JSON.parse(
+      localStorage.getItem("dismissed_reminder_tasks") || "[]"
+    );
+    if (!dismissed.includes(taskId)) {
+      dismissed.push(taskId);
+      localStorage.setItem("dismissed_reminder_tasks", JSON.stringify(dismissed));
+    }
+    setReminderTasks((prev) => prev.filter((t) => t.id !== taskId));
+    setShowReminderBanner((prev) => prev && reminderTasks.length > 1);
+  };
+
+  const handleDismissAllReminders = () => {
+    setShowReminderBanner(false);
+  };
+
+  const handleReminderMarkDone = async (task: Task) => {
+    // Remove from reminder list immediately
+    setReminderTasks((prev) => prev.filter((t) => t.id !== task.id));
+    if (reminderTasks.length <= 1) setShowReminderBanner(false);
+    try {
+      await toggleComplete(task.id, true);
+      refreshPendingState();
+      // Also update the main task list if it's the same date
+      if (task.date === selectedDate) {
+        await fetchTasks(selectedDate);
+      }
+    } catch (err) {
+      console.error("Failed to mark reminder task done:", err);
+    }
   };
 
   // Filter tasks into anytime vs timed
@@ -193,7 +287,18 @@ export function App() {
         onOpenAbout={() => setIsAboutOpen(true)}
         onOpenAlarm={() => setIsAlarmOpen(true)}
         onOpenBackup={() => setIsBackupOpen(true)}
+        onOpenReleaseNotes={() => setIsReleaseNotesOpen(true)}
+        onOpenPendingHistory={() => setIsPendingHistoryOpen(true)}
         isAlarmActive={isAlarmActive}
+        pendingCount={pendingCount}
+        updateAvailable={updateInfo?.hasUpdate ?? false}
+        onCheckUpdate={() => {
+          if (updateInfo?.hasUpdate) {
+            setShowUpdateBanner(true);
+          } else {
+            setIsReleaseNotesOpen(true);
+          }
+        }}
       />
 
       {/* Floating Active Alarm Notification Banner */}
@@ -221,6 +326,27 @@ export function App() {
             ⏹ Stop Alarm
           </button>
         </div>
+      )}
+
+      {/* Update Available Banner */}
+      {showUpdateBanner && updateInfo?.hasUpdate && (
+        <UpdateBanner
+          latestVersion={updateInfo.latestVersion}
+          releaseUrl={updateInfo.releaseUrl}
+          releaseBody={updateInfo.releaseBody}
+          publishedAt={updateInfo.publishedAt}
+          onDismiss={() => setShowUpdateBanner(false)}
+        />
+      )}
+
+      {/* Yesterday Pending Task Reminder Banner */}
+      {showReminderBanner && reminderTasks.length > 0 && (
+        <PendingReminderBanner
+          tasks={reminderTasks}
+          onDismissTask={handleDismissReminderTask}
+          onDismissAll={handleDismissAllReminders}
+          onMarkDone={handleReminderMarkDone}
+        />
       )}
 
       {/* 7-day horizontal glass date strip */}
@@ -306,6 +432,19 @@ export function App() {
 
       {/* About Developer Modal */}
       <AboutModal isOpen={isAboutOpen} onClose={() => setIsAboutOpen(false)} />
+
+      {/* Release Notes / Changelog Modal */}
+      <ReleaseNotesModal
+        isOpen={isReleaseNotesOpen}
+        onClose={() => setIsReleaseNotesOpen(false)}
+      />
+
+      {/* Pending Task History Log Modal */}
+      <PendingHistoryModal
+        isOpen={isPendingHistoryOpen}
+        onClose={() => setIsPendingHistoryOpen(false)}
+        onTasksChanged={refreshPendingState}
+      />
     </div>
   );
 }

@@ -268,3 +268,27 @@ html, body {
 .animate-pulse-glow {
   animation: pulseGlow 2.5s infinite ease-in-out;
 }
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-slide-down {
+  animation: slideDown 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* Allow text selection in note editors and markdown preview areas */
+.note-preview-body,
+.release-notes-body,
+textarea {
+  user-select: text;
+  -webkit-user-select: text;
+}
+

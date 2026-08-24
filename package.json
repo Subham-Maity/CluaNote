@@ -1,7 +1,7 @@
 {
   "name": "cluanote",
   "private": true,
-  "version": "0.2.4",
+  "version": "0.3.0",
   "type": "module",
   "author": "Subham Maity (https://github.com/Subham-Maity)",
   "homepage": "https://github.com/Subham-Maity",
@@ -22,6 +22,7 @@
     "date-fns": "^4.4.0",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
+    "react-markdown": "^10.1.0",
     "tailwindcss": "^4.3.3"
   },
   "devDependencies": {

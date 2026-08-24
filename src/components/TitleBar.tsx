@@ -5,14 +5,24 @@ interface TitleBarProps {
   onOpenAbout: () => void;
   onOpenAlarm: () => void;
   onOpenBackup: () => void;
+  onOpenReleaseNotes: () => void;
+  onOpenPendingHistory: () => void;
   isAlarmActive: boolean;
+  pendingCount: number;
+  updateAvailable: boolean;
+  onCheckUpdate: () => void;
 }
 
 export function TitleBar({
   onOpenAbout,
   onOpenAlarm,
   onOpenBackup,
+  onOpenReleaseNotes,
+  onOpenPendingHistory,
   isAlarmActive,
+  pendingCount,
+  updateAvailable,
+  onCheckUpdate,
 }: TitleBarProps) {
   const appWindow = getCurrentWindow();
   const [isMaximized, setIsMaximized] = useState(false);
@@ -104,6 +114,83 @@ export function TitleBar({
 
       {/* Right: Window & Feature controls */}
       <div className="flex items-center space-x-1">
+        {/* Update Available indicator button */}
+        <button
+          type="button"
+          onClick={onCheckUpdate}
+          title={updateAvailable ? "Update Available — click to view" : "CluaNote is up to date"}
+          className="relative w-8 h-8 rounded-md flex items-center justify-center text-white/70 hover:text-white hover:bg-white/[0.08] transition-colors cursor-pointer"
+        >
+          <svg
+            className="w-4 h-4"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            strokeWidth={2}
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4-4m0 0l-4 4m4-4v12"
+            />
+          </svg>
+          {updateAvailable && (
+            <span className="absolute top-1.5 right-1.5 flex h-2 w-2">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75" />
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500 shadow-sm shadow-amber-400" />
+            </span>
+          )}
+        </button>
+
+        {/* Pending Task History Button */}
+        <button
+          type="button"
+          onClick={onOpenPendingHistory}
+          title={`Pending Tasks Log (${pendingCount} pending)`}
+          className="relative w-8 h-8 rounded-md flex items-center justify-center text-white/70 hover:text-white hover:bg-white/[0.08] transition-colors cursor-pointer"
+        >
+          <svg
+            className="w-4 h-4"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            strokeWidth={2}
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7H9m0 0H9m3 0h3M9 12h.01M12 12h.01M15 12h.01"
+            />
+          </svg>
+          {pendingCount > 0 && (
+            <span className="absolute -top-0.5 -right-0.5 min-w-[14px] h-3.5 px-0.5 rounded-full bg-rose-500 text-white text-[8px] font-bold flex items-center justify-center shadow-sm">
+              {pendingCount > 99 ? "99+" : pendingCount}
+            </span>
+          )}
+        </button>
+
+        {/* Release Notes / Changelog Button */}
+        <button
+          type="button"
+          onClick={onOpenReleaseNotes}
+          title="Release Notes &amp; Changelog"
+          className="w-8 h-8 rounded-md flex items-center justify-center text-white/60 hover:text-white hover:bg-white/[0.08] transition-colors cursor-pointer"
+        >
+          <svg
+            className="w-4 h-4"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            strokeWidth={2}
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+            />
+          </svg>
+        </button>
+
         {/* Task Alarm & Audio Button with Glowing indicator */}
         <button
           type="button"

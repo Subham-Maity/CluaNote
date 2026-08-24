@@ -1,4 +1,5 @@
 import React from "react";
+import ReactMarkdown from "react-markdown";
 import type { Task } from "../types/task";
 import clsx from "clsx";
 
@@ -87,14 +88,52 @@ export const TaskCard: React.FC<TaskCardProps> = ({
         </div>
 
         {task.note && (
-          <p
+          <div
             className={clsx(
-              "text-xs text-white/60 mt-1 line-clamp-2 leading-relaxed break-words",
+              "task-card-note text-xs text-white/60 mt-1 leading-relaxed break-words",
               isCompleted && "text-white/40"
             )}
           >
-            {task.note}
-          </p>
+            <ReactMarkdown
+              allowedElements={[
+                "p", "strong", "em", "del", "code",
+                "ul", "ol", "li", "a",
+              ]}
+              components={{
+                p: ({ children }) => (
+                  <p className="line-clamp-2 mb-0">{children}</p>
+                ),
+                strong: ({ children }) => (
+                  <strong className="font-semibold text-white/80">{children}</strong>
+                ),
+                em: ({ children }) => (
+                  <em className="italic text-white/65">{children}</em>
+                ),
+                del: ({ children }) => (
+                  <del className="line-through text-white/35">{children}</del>
+                ),
+                code: ({ children }) => (
+                  <code className="px-1 py-0.5 rounded bg-indigo-500/15 text-indigo-300 font-mono text-[10px]">
+                    {children}
+                  </code>
+                ),
+                ul: ({ children }) => (
+                  <ul className="list-disc list-inside">{children}</ul>
+                ),
+                ol: ({ children }) => (
+                  <ol className="list-decimal list-inside">{children}</ol>
+                ),
+                li: ({ children }) => (
+                  <li className="text-[11px]">{children}</li>
+                ),
+                a: ({ children }) => (
+                  <span className="text-indigo-400 underline">{children}</span>
+                ),
+              }}
+            >
+              {task.note}
+            </ReactMarkdown>
+          </div>
         )}
       </div>
 
