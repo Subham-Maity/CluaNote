@@ -29,13 +29,14 @@ CREATE TABLE IF NOT EXISTS cluanote_tasks (
     date VARCHAR(10) NOT NULL,
     time VARCHAR(10),
     priority VARCHAR(10) NOT NULL DEFAULT 'medium',
-    completed SMALLINT NOT NULL DEFAULT 0,
+    completed INTEGER NOT NULL DEFAULT 0,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     is_deleted BOOLEAN NOT NULL DEFAULT FALSE
 );
 CREATE INDEX IF NOT EXISTS idx_cluanote_tasks_date ON cluanote_tasks(date);
 CREATE INDEX IF NOT EXISTS idx_cluanote_tasks_updated ON cluanote_tasks(updated_at);
+ALTER TABLE cluanote_tasks ALTER COLUMN completed TYPE INTEGER;
 "#;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -488,7 +489,7 @@ pub async fn sync_postgres_impl(
 
     for local in &local_tasks {
         let is_deleted_bool = local.is_deleted == 1;
-        let completed_i16: i16 = local.completed as i16;
+        let completed_i32: i32 = local.completed as i32;
         let created_at_dt: DateTime<Utc> = parse_iso_or_now(&local.created_at);
         let updated_at_dt: DateTime<Utc> = parse_iso_or_now(&local.updated_at);
 
@@ -501,7 +502,7 @@ pub async fn sync_postgres_impl(
                 &local.date,
                 &local.time,
                 &local.priority,
-                &completed_i16,
+                &completed_i32,
                 &created_at_dt,
                 &updated_at_dt,
                 &is_deleted_bool,

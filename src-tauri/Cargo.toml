@@ -1,6 +1,6 @@
 [package]
 name = "cluanote"
-version = "0.3.7"
+version = "0.3.8"
 description = "A fast, minimalist, dark glassmorphic desktop task planner"
 authors = ["Subham Maity <https://github.com/Subham-Maity>"]
 edition = "2021"
