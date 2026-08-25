@@ -1,10 +1,16 @@
 pub mod error;
+pub mod postgres_sync;
 
 pub use error::CommandError;
+use postgres_sync::{
+    disconnect_postgres_impl, get_postgres_config_impl, save_postgres_config_impl,
+    sync_postgres_impl, test_postgres_connection_impl, ConnectionTestResult,
+    PostgresConfigInfo, SyncResult, SyncTask,
+};
 use tauri::{
     menu::{MenuBuilder, MenuItemBuilder},
     tray::TrayIconBuilder,
-    Manager, WindowEvent,
+    AppHandle, Manager, WindowEvent,
 };
 
 #[tauri::command]
@@ -36,6 +42,38 @@ fn import_backup_file() -> Result<String, String> {
     }
 }
 
+#[tauri::command]
+async fn test_postgres_connection(url: String) -> Result<ConnectionTestResult, String> {
+    test_postgres_connection_impl(url).await
+}
+
+#[tauri::command]
+async fn save_postgres_config(
+    app: AppHandle,
+    url: String,
+    auto_sync: bool,
+) -> Result<PostgresConfigInfo, String> {
+    save_postgres_config_impl(app, url, auto_sync).await
+}
+
+#[tauri::command]
+async fn get_postgres_config(app: AppHandle) -> Result<PostgresConfigInfo, String> {
+    get_postgres_config_impl(app).await
+}
+
+#[tauri::command]
+async fn disconnect_postgres(app: AppHandle) -> Result<(), String> {
+    disconnect_postgres_impl(app).await
+}
+
+#[tauri::command]
+async fn sync_postgres(
+    app: AppHandle,
+    local_tasks: Vec<SyncTask>,
+) -> Result<SyncResult, String> {
+    sync_postgres_impl(app, local_tasks).await
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -48,7 +86,12 @@ pub fn run() {
         ))
         .invoke_handler(tauri::generate_handler![
             export_backup_file,
-            import_backup_file
+            import_backup_file,
+            test_postgres_connection,
+            save_postgres_config,
+            get_postgres_config,
+            disconnect_postgres,
+            sync_postgres
         ])
         .on_window_event(|window, event| {
             // Intercept window close: prevent exit and hide window to background tray

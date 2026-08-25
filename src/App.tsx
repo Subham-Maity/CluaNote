@@ -35,6 +35,7 @@ import {
 } from "./lib/alarm";
 import { sendTaskNotification } from "./lib/notifications";
 import { checkForUpdate } from "./lib/updater";
+import { startBackgroundAutoSync } from "./lib/postgres";
 import type { Task, NewTask } from "./types/task";
 import type { UpdateCheckResult } from "./lib/updater";
 
@@ -163,6 +164,25 @@ export function App() {
   useEffect(() => {
     fetchTasks(selectedDate);
   }, [selectedDate, fetchTasks]);
+
+  // Background PostgreSQL Auto-Sync Worker
+  useEffect(() => {
+    const stopAutoSync = startBackgroundAutoSync(
+      (res) => {
+        if (res.pulled_count > 0) {
+          fetchTasks(selectedDate);
+          refreshPendingState();
+        }
+      },
+      (err) => {
+        console.warn("Background auto-sync note:", err);
+      }
+    );
+
+    return () => {
+      stopAutoSync();
+    };
+  }, [selectedDate, fetchTasks, refreshPendingState]);
 
   // Background Alarm Checker: runs every 10 seconds across all database tasks
   useEffect(() => {

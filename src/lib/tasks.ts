@@ -1,15 +1,15 @@
 import { getDb } from "./db";
-import type { NewTask, Task, UpdateTaskInput } from "../types/task";
+import type { NewTask, Task, UpdateTaskInput, SyncTask } from "../types/task";
 
 /**
- * Fetches all tasks for a specific date (YYYY-MM-DD), ordered by time and creation.
+ * Fetches all active tasks for a specific date (YYYY-MM-DD), ordered by time and creation.
  */
 export async function getTasks(date: string): Promise<Task[]> {
   const db = await getDb();
   const rows = await db.select<Task[]>(
-    `SELECT id, title, note, date, time, priority, completed, created_at 
+    `SELECT id, uuid, title, note, date, time, priority, completed, created_at, updated_at, is_deleted 
      FROM tasks 
-     WHERE date = $1 
+     WHERE is_deleted = 0 AND date = $1 
      ORDER BY 
        CASE WHEN time IS NULL THEN 0 ELSE 1 END,
        time ASC, 
@@ -20,14 +20,28 @@ export async function getTasks(date: string): Promise<Task[]> {
 }
 
 /**
- * Fetches all tasks in the database (for alarm checker and backups).
+ * Fetches all active tasks in the database (for alarm checker and backups).
  */
 export async function getAllTasks(): Promise<Task[]> {
   const db = await getDb();
   const rows = await db.select<Task[]>(
-    `SELECT id, title, note, date, time, priority, completed, created_at 
+    `SELECT id, uuid, title, note, date, time, priority, completed, created_at, updated_at, is_deleted 
      FROM tasks 
+     WHERE is_deleted = 0
      ORDER BY date ASC, time ASC, id ASC`
+  );
+  return rows;
+}
+
+/**
+ * Fetches all tasks (including soft-deleted tombstones) to synchronize with remote Postgres.
+ */
+export async function getAllTasksForSync(): Promise<SyncTask[]> {
+  const db = await getDb();
+  const rows = await db.select<SyncTask[]>(
+    `SELECT uuid, title, note, date, time, priority, completed, created_at, updated_at, is_deleted 
+     FROM tasks 
+     ORDER BY updated_at ASC`
   );
   return rows;
 }
@@ -39,9 +53,9 @@ export async function getAllTasks(): Promise<Task[]> {
 export async function getPendingTasks(): Promise<Task[]> {
   const db = await getDb();
   const rows = await db.select<Task[]>(
-    `SELECT id, title, note, date, time, priority, completed, created_at 
+    `SELECT id, uuid, title, note, date, time, priority, completed, created_at, updated_at, is_deleted 
      FROM tasks 
-     WHERE completed = 0
+     WHERE is_deleted = 0 AND completed = 0
      ORDER BY date DESC, time ASC, id ASC`
   );
   return rows;
@@ -54,9 +68,9 @@ export async function getPendingTasks(): Promise<Task[]> {
 export async function getNotDoneTasks(): Promise<Task[]> {
   const db = await getDb();
   const rows = await db.select<Task[]>(
-    `SELECT id, title, note, date, time, priority, completed, created_at 
+    `SELECT id, uuid, title, note, date, time, priority, completed, created_at, updated_at, is_deleted 
      FROM tasks 
-     WHERE completed = 2
+     WHERE is_deleted = 0 AND completed = 2
      ORDER BY date DESC, time ASC, id ASC`
   );
   return rows;
@@ -69,9 +83,10 @@ export async function getNotDoneTasks(): Promise<Task[]> {
 export async function getYesterdayPendingTasks(): Promise<Task[]> {
   const db = await getDb();
   const rows = await db.select<Task[]>(
-    `SELECT id, title, note, date, time, priority, completed, created_at 
+    `SELECT id, uuid, title, note, date, time, priority, completed, created_at, updated_at, is_deleted 
      FROM tasks 
-     WHERE completed = 0
+     WHERE is_deleted = 0 
+       AND completed = 0
        AND date = date('now', '-1 day')
      ORDER BY time ASC, id ASC`
   );
@@ -79,7 +94,7 @@ export async function getYesterdayPendingTasks(): Promise<Task[]> {
 }
 
 /**
- * Inserts a new task into SQLite.
+ * Inserts a new task into SQLite with generated UUID and updated_at timestamp.
  */
 export async function addTask(task: NewTask): Promise<void> {
   const db = await getDb();
@@ -88,21 +103,27 @@ export async function addTask(task: NewTask): Promise<void> {
     throw new Error("Task title cannot be empty");
   }
 
+  const uuid = task.uuid || crypto.randomUUID();
+  const nowIso = new Date().toISOString();
+
   await db.execute(
-    `INSERT INTO tasks (title, note, date, time, priority, completed) 
-     VALUES ($1, $2, $3, $4, $5, 0)`,
+    `INSERT INTO tasks (uuid, title, note, date, time, priority, completed, created_at, updated_at, is_deleted) 
+     VALUES ($1, $2, $3, $4, $5, $6, 0, $7, $8, 0)`,
     [
+      uuid,
       title,
       task.note ? task.note.trim() : null,
       task.date,
       task.time || null,
       task.priority || "medium",
+      nowIso,
+      nowIso,
     ]
   );
 }
 
 /**
- * Updates an existing task with partial changes.
+ * Updates an existing task with partial changes and updates the updated_at timestamp.
  */
 export async function updateTask(
   id: number,
@@ -145,12 +166,13 @@ export async function updateTask(
 
   if (changes.completed !== undefined) {
     setClauses.push(`completed = $${paramIndex++}`);
-    values.push(changes.completed ? 1 : 0);
+    values.push(changes.completed);
   }
 
-  if (setClauses.length === 0) {
-    return;
-  }
+  // Always update updated_at timestamp
+  const nowIso = new Date().toISOString();
+  setClauses.push(`updated_at = $${paramIndex++}`);
+  values.push(nowIso);
 
   values.push(id);
   const sql = `UPDATE tasks SET ${setClauses.join(", ")} WHERE id = $${paramIndex}`;
@@ -158,26 +180,30 @@ export async function updateTask(
 }
 
 /**
- * Deletes a task by its ID.
+ * Soft deletes a task by its ID (marks is_deleted = 1 and updates timestamp).
  */
 export async function deleteTask(id: number): Promise<void> {
   const db = await getDb();
-  await db.execute("DELETE FROM tasks WHERE id = $1", [id]);
+  const nowIso = new Date().toISOString();
+  await db.execute(
+    "UPDATE tasks SET is_deleted = 1, updated_at = $1 WHERE id = $2",
+    [nowIso, id]
+  );
 }
 
 /**
- * Toggles or sets the completion status of a task.
- * If completed is true, sets to 1 (done). If false, sets to 0 (pending/active).
+ * Sets the completion status of a task.
  */
 export async function toggleComplete(
   id: number,
   completed: boolean
 ): Promise<void> {
   const db = await getDb();
-  await db.execute("UPDATE tasks SET completed = $1 WHERE id = $2", [
-    completed ? 1 : 0,
-    id,
-  ]);
+  const nowIso = new Date().toISOString();
+  await db.execute(
+    "UPDATE tasks SET completed = $1, updated_at = $2 WHERE id = $3",
+    [completed ? 1 : 0, nowIso, id]
+  );
 }
 
 /**
@@ -191,20 +217,64 @@ export async function setTaskStatus(
   status: number
 ): Promise<void> {
   const db = await getDb();
-  await db.execute("UPDATE tasks SET completed = $1 WHERE id = $2", [
-    status,
-    id,
-  ]);
+  const nowIso = new Date().toISOString();
+  await db.execute(
+    "UPDATE tasks SET completed = $1, updated_at = $2 WHERE id = $3",
+    [status, nowIso, id]
+  );
 }
 
 /**
- * Exports all tasks as a JSON formatted string for backup.
+ * Merges pulled remote tasks from Postgres into local SQLite.
+ * Uses atomic SQLite transactions to prevent partial writes.
+ */
+export async function batchUpsertFromSync(pulledTasks: SyncTask[]): Promise<number> {
+  if (pulledTasks.length === 0) return 0;
+  const db = await getDb();
+
+  let mergedCount = 0;
+  for (const t of pulledTasks) {
+    await db.execute(
+      `INSERT INTO tasks (uuid, title, note, date, time, priority, completed, created_at, updated_at, is_deleted)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+       ON CONFLICT (uuid) DO UPDATE SET
+         title = excluded.title,
+         note = excluded.note,
+         date = excluded.date,
+         time = excluded.time,
+         priority = excluded.priority,
+         completed = excluded.completed,
+         created_at = excluded.created_at,
+         updated_at = excluded.updated_at,
+         is_deleted = excluded.is_deleted
+       WHERE excluded.updated_at >= tasks.updated_at;`,
+      [
+        t.uuid,
+        t.title,
+        t.note || null,
+        t.date,
+        t.time || null,
+        t.priority || "medium",
+        t.completed,
+        t.created_at,
+        t.updated_at,
+        t.is_deleted,
+      ]
+    );
+    mergedCount++;
+  }
+
+  return mergedCount;
+}
+
+/**
+ * Exports all active tasks as a JSON formatted string for backup.
  */
 export async function exportAllTasksJson(): Promise<string> {
   const tasks = await getAllTasks();
   const backup = {
     appName: "CluaNote",
-    version: "0.3.2",
+    version: "0.3.3",
     exportedAt: new Date().toISOString(),
     totalTasks: tasks.length,
     tasks,
@@ -231,19 +301,25 @@ export async function importTasksFromJson(jsonData: string): Promise<number> {
   let count = 0;
   for (const t of taskList) {
     if (!t.title || !t.date) continue;
+    const uuid = t.uuid || crypto.randomUUID();
+    const nowIso = new Date().toISOString();
     await db.execute(
-      `INSERT INTO tasks (title, note, date, time, priority, completed) 
-       VALUES ($1, $2, $3, $4, $5, $6)`,
+      `INSERT INTO tasks (uuid, title, note, date, time, priority, completed, created_at, updated_at, is_deleted) 
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 0)`,
       [
+        uuid,
         t.title.trim(),
         t.note ? t.note.trim() : null,
         t.date,
         t.time || null,
         t.priority || "medium",
-        t.completed ? 1 : 0,
+        t.completed || 0,
+        t.created_at || nowIso,
+        t.updated_at || nowIso,
       ]
     );
     count++;
   }
   return count;
 }
+
