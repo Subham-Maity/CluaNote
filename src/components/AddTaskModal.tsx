@@ -127,7 +127,13 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({
       onClose();
     } catch (err) {
       console.error("Failed to save task:", err);
-      setError(err instanceof Error ? err.message : "Failed to save task");
+      const message =
+        typeof err === "string"
+          ? err
+          : err instanceof Error
+          ? err.message
+          : JSON.stringify(err);
+      setError(message || "Failed to save task");
     } finally {
       setIsSubmitting(false);
     }

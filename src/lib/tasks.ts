@@ -108,7 +108,7 @@ export async function addTask(task: NewTask): Promise<void> {
 
   await db.execute(
     `INSERT INTO tasks (uuid, title, note, date, time, priority, completed, created_at, updated_at, is_deleted) 
-     VALUES ($1, $2, $3, $4, $5, $6, 0, $7, $8, 0)`,
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
     [
       uuid,
       title,
@@ -116,8 +116,10 @@ export async function addTask(task: NewTask): Promise<void> {
       task.date,
       task.time || null,
       task.priority || "medium",
+      0,
       nowIso,
       nowIso,
+      0,
     ]
   );
 }
@@ -274,7 +276,7 @@ export async function exportAllTasksJson(): Promise<string> {
   const tasks = await getAllTasks();
   const backup = {
     appName: "CluaNote",
-    version: "0.3.3",
+    version: "0.3.4",
     exportedAt: new Date().toISOString(),
     totalTasks: tasks.length,
     tasks,

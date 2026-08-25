@@ -46,39 +46,66 @@ export async function initDb(): Promise<Database> {
       }
 
       try {
-        await db.execute(
-          `ALTER TABLE tasks ADD COLUMN updated_at TEXT NOT NULL DEFAULT (datetime('now'));`
-        );
+        await db.execute(`ALTER TABLE tasks ADD COLUMN updated_at TEXT;`);
       } catch {
         // column already exists
       }
 
       try {
         await db.execute(
-          `ALTER TABLE tasks ADD COLUMN is_deleted INTEGER NOT NULL DEFAULT 0;`
+          `ALTER TABLE tasks ADD COLUMN is_deleted INTEGER DEFAULT 0;`
         );
       } catch {
         // column already exists
       }
 
-      await db.execute(`
-        CREATE INDEX IF NOT EXISTS idx_tasks_date ON tasks(date);
-      `);
-
-      await db.execute(`
-        CREATE UNIQUE INDEX IF NOT EXISTS idx_tasks_uuid ON tasks(uuid);
-      `);
-
       // Auto-backfill UUIDs for any existing tasks created before sync was added
-      const unassigned = await db.select<{ id: number }[]>(
-        `SELECT id FROM tasks WHERE uuid IS NULL OR uuid = ''`
-      );
-      for (const row of unassigned) {
-        const newUuid = crypto.randomUUID();
-        await db.execute(`UPDATE tasks SET uuid = $1 WHERE id = $2`, [
-          newUuid,
-          row.id,
-        ]);
+      try {
+        const unassigned = await db.select<{ id: number }[]>(
+          `SELECT id FROM tasks WHERE uuid IS NULL OR uuid = ''`
+        );
+        for (const row of unassigned) {
+          const newUuid = crypto.randomUUID();
+          await db.execute(`UPDATE tasks SET uuid = $1 WHERE id = $2`, [
+            newUuid,
+            row.id,
+          ]);
+        }
+      } catch (err) {
+        console.warn("UUID backfill notice:", err);
+      }
+
+      // Backfill updated_at and is_deleted
+      try {
+        await db.execute(
+          `UPDATE tasks SET updated_at = datetime('now') WHERE updated_at IS NULL OR updated_at = ''`
+        );
+      } catch (err) {
+        console.warn("updated_at backfill notice:", err);
+      }
+
+      try {
+        await db.execute(
+          `UPDATE tasks SET is_deleted = 0 WHERE is_deleted IS NULL`
+        );
+      } catch (err) {
+        console.warn("is_deleted backfill notice:", err);
+      }
+
+      try {
+        await db.execute(`
+          CREATE INDEX IF NOT EXISTS idx_tasks_date ON tasks(date);
+        `);
+      } catch {
+        // index already exists
+      }
+
+      try {
+        await db.execute(`
+          CREATE UNIQUE INDEX IF NOT EXISTS idx_tasks_uuid ON tasks(uuid);
+        `);
+      } catch {
+        // index already exists
       }
 
       dbInstance = db;
