@@ -177,7 +177,7 @@ pub fn validate_and_sanitize_url(raw: &str) -> Result<String, String> {
         return Err("Connection string cannot be empty.".to_string());
     }
 
-    let parsed = Url::parse(trimmed).map_err(|e| {
+    let mut parsed = Url::parse(trimmed).map_err(|e| {
         format!("Invalid connection URL format. Expected 'postgresql://user:pass@host/db': {}", e)
     })?;
 
@@ -190,13 +190,39 @@ pub fn validate_and_sanitize_url(raw: &str) -> Result<String, String> {
         return Err("Connection URL is missing a valid host name.".to_string());
     }
 
+    // Check for masked bullet points in password
+    if let Some(pass) = parsed.password() {
+        if pass.contains('•') || pass.contains("%E2%80%A2") || pass.contains("%e2%80%a2") {
+            return Err("Your connection string contains masked bullet points (••••••••). Please copy the connection string from your Neon dashboard with your actual password revealed.".to_string());
+        }
+    }
+
     // Check for SSL requirement
     let query = parsed.query().unwrap_or("");
     if query.contains("sslmode=disable") {
         return Err("Plaintext connection (sslmode=disable) is not allowed. Please use SSL (e.g. sslmode=require) for secure synchronization.".to_string());
     }
 
-    Ok(trimmed.to_string())
+    // Filter out unsupported channel_binding parameter for tokio-postgres TLS compatibility
+    if query.contains("channel_binding") {
+        let pairs: Vec<(String, String)> = parsed
+            .query_pairs()
+            .map(|(k, v)| (k.to_string(), v.to_string()))
+            .filter(|(k, _)| k != "channel_binding")
+            .collect();
+
+        if pairs.is_empty() {
+            parsed.set_query(None);
+        } else {
+            let mut ser = url::form_urlencoded::Serializer::new(String::new());
+            for (k, v) in pairs {
+                ser.append_pair(&k, &v);
+            }
+            parsed.set_query(Some(&ser.finish()));
+        }
+    }
+
+    Ok(parsed.to_string())
 }
 
 fn map_pg_error(e: tokio_postgres::Error) -> String {
