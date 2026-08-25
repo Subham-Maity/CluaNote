@@ -8,6 +8,7 @@ interface PendingReminderBannerProps {
   onDismissTask: (taskId: number) => void;
   onDismissAll: () => void;
   onMarkDone: (task: Task) => void;
+  onMarkNotDone: (task: Task) => void;
 }
 
 /** Returns color scheme based on pending task count. */
@@ -65,6 +66,7 @@ export const PendingReminderBanner: React.FC<PendingReminderBannerProps> = ({
   onDismissTask,
   onDismissAll,
   onMarkDone,
+  onMarkNotDone,
 }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
 
@@ -92,6 +94,13 @@ export const PendingReminderBanner: React.FC<PendingReminderBannerProps> = ({
       setCurrentIndex(Math.max(0, tasks.length - 2));
     }
     onMarkDone(currentTask);
+  };
+
+  const handleMarkNotDone = () => {
+    if (currentIndex >= tasks.length - 1) {
+      setCurrentIndex(Math.max(0, tasks.length - 2));
+    }
+    onMarkNotDone(currentTask);
   };
 
   const formatTaskDate = (d: string) => {
@@ -228,7 +237,7 @@ export const PendingReminderBanner: React.FC<PendingReminderBannerProps> = ({
             <button
               type="button"
               onClick={handleMarkDone}
-              className="flex items-center space-x-1 px-2.5 py-1 rounded-lg bg-white/10 hover:bg-white/20 text-white text-[10px] font-bold transition-colors cursor-pointer"
+              className="flex items-center space-x-1 px-2 py-1 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 text-[10px] font-bold transition-colors cursor-pointer border border-emerald-500/30"
             >
               <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
@@ -237,11 +246,22 @@ export const PendingReminderBanner: React.FC<PendingReminderBannerProps> = ({
             </button>
             <button
               type="button"
+              onClick={handleMarkNotDone}
+              title="Mark as Not Done"
+              className="flex items-center space-x-1 px-2 py-1 rounded-lg bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 text-[10px] font-bold transition-colors cursor-pointer border border-rose-500/30"
+            >
+              <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+              <span>Not Done</span>
+            </button>
+            <button
+              type="button"
               onClick={handleDismissTask}
               title="Don't show this task again"
-              className="text-[10px] text-white/35 hover:text-white/60 transition-colors cursor-pointer whitespace-nowrap"
+              className="text-[10px] text-white/35 hover:text-white/60 transition-colors cursor-pointer whitespace-nowrap pl-1"
             >
-              Don&apos;t show
+              Hide
             </button>
           </div>
 

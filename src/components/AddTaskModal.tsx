@@ -11,6 +11,8 @@ interface AddTaskModalProps {
   onSave: (taskData: NewTask, editId?: number) => Promise<void>;
 }
 
+const DRAFT_STORAGE_KEY = "cluanote_task_draft";
+
 export const AddTaskModal: React.FC<AddTaskModalProps> = ({
   isOpen,
   selectedDate,
@@ -25,9 +27,11 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({
   const [priority, setPriority] = useState<TaskPriority>("medium");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [hasRestoredDraft, setHasRestoredDraft] = useState(false);
 
   const titleInputRef = useRef<HTMLInputElement>(null);
 
+  // Load editing task or restore auto-saved draft on open
   useEffect(() => {
     if (isOpen) {
       if (editingTask) {
@@ -36,17 +40,60 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({
         setDate(editingTask.date);
         setTime(editingTask.time || "");
         setPriority(editingTask.priority || "medium");
+        setHasRestoredDraft(false);
       } else {
-        setTitle("");
-        setNote("");
-        setDate(selectedDate);
-        setTime("");
-        setPriority("medium");
+        // Check for auto-saved draft
+        const savedDraft = localStorage.getItem(DRAFT_STORAGE_KEY);
+        if (savedDraft) {
+          try {
+            const parsed = JSON.parse(savedDraft);
+            if (parsed.title || parsed.note) {
+              setTitle(parsed.title || "");
+              setNote(parsed.note || "");
+              setDate(parsed.date || selectedDate);
+              setTime(parsed.time || "");
+              setPriority(parsed.priority || "medium");
+              setHasRestoredDraft(true);
+            } else {
+              resetToDefault();
+            }
+          } catch {
+            resetToDefault();
+          }
+        } else {
+          resetToDefault();
+        }
       }
       setError(null);
       setTimeout(() => titleInputRef.current?.focus(), 50);
     }
   }, [isOpen, editingTask, selectedDate]);
+
+  const resetToDefault = () => {
+    setTitle("");
+    setNote("");
+    setDate(selectedDate);
+    setTime("");
+    setPriority("medium");
+    setHasRestoredDraft(false);
+  };
+
+  // Auto-save draft as user writes (only for new tasks)
+  useEffect(() => {
+    if (isOpen && !editingTask) {
+      if (title.trim() || note.trim()) {
+        const draft = { title, note, date, time, priority };
+        localStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify(draft));
+      } else {
+        localStorage.removeItem(DRAFT_STORAGE_KEY);
+      }
+    }
+  }, [isOpen, editingTask, title, note, date, time, priority]);
+
+  const handleDiscardDraft = () => {
+    localStorage.removeItem(DRAFT_STORAGE_KEY);
+    resetToDefault();
+  };
 
   if (!isOpen) {
     return null;
@@ -75,6 +122,8 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({
         editingTask?.id
       );
 
+      // Clear draft on successful save
+      localStorage.removeItem(DRAFT_STORAGE_KEY);
       onClose();
     } catch (err) {
       console.error("Failed to save task:", err);
@@ -125,6 +174,23 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({
             </svg>
           </button>
         </div>
+
+        {/* Draft auto-restored indicator */}
+        {hasRestoredDraft && !editingTask && (
+          <div className="mb-3.5 px-3 py-1.5 rounded-xl bg-indigo-500/15 border border-indigo-500/30 flex items-center justify-between animate-fade-in">
+            <span className="text-[11px] text-indigo-300 font-medium flex items-center space-x-1.5">
+              <span>📝</span>
+              <span>Draft auto-restored</span>
+            </span>
+            <button
+              type="button"
+              onClick={handleDiscardDraft}
+              className="text-[10px] text-white/50 hover:text-rose-300 underline cursor-pointer transition-colors"
+            >
+              Discard draft
+            </button>
+          </div>
+        )}
 
         {error && (
           <div className="mb-3 px-3 py-2 rounded-lg bg-rose-500/20 border border-rose-500/30 text-rose-300 text-xs">

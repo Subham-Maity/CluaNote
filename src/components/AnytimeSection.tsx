@@ -5,6 +5,7 @@ import { TaskCard } from "./TaskCard";
 interface AnytimeSectionProps {
   tasks: Task[];
   onToggleComplete: (id: number, completed: boolean) => void;
+  onSetStatus?: (id: number, status: number) => void;
   onEdit: (task: Task) => void;
   onDelete: (id: number) => void;
 }
@@ -12,6 +13,7 @@ interface AnytimeSectionProps {
 export const AnytimeSection: React.FC<AnytimeSectionProps> = ({
   tasks,
   onToggleComplete,
+  onSetStatus,
   onEdit,
   onDelete,
 }) => {
@@ -48,6 +50,7 @@ export const AnytimeSection: React.FC<AnytimeSectionProps> = ({
             key={task.id}
             task={task}
             onToggleComplete={onToggleComplete}
+            onSetStatus={onSetStatus}
             onEdit={onEdit}
             onDelete={onDelete}
           />

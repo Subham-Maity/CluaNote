@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { format, isToday, isPast, parseISO, isYesterday } from "date-fns";
-import { getPendingTasks, toggleComplete, setTaskStatus, deleteTask } from "../lib/tasks";
+import { format, isToday, parseISO, isYesterday } from "date-fns";
+import { getNotDoneTasks, setTaskStatus, deleteTask } from "../lib/tasks";
 import type { Task } from "../types/task";
 import clsx from "clsx";
 
-interface PendingHistoryModalProps {
+interface NotDoneHistoryModalProps {
   isOpen: boolean;
   onClose: () => void;
   onTasksChanged: () => void;
@@ -12,26 +12,7 @@ interface PendingHistoryModalProps {
 
 type SortOrder = "desc" | "asc";
 
-/** Returns a Tailwind color class set based on how overdue the date is. */
-function getDateStatus(dateStr: string): "overdue" | "yesterday" | "today" | "future" {
-  try {
-    const d = parseISO(dateStr);
-    if (isToday(d)) return "today";
-    if (isYesterday(d)) return "yesterday";
-    if (isPast(d)) return "overdue";
-    return "future";
-  } catch {
-    return "overdue";
-  }
-}
-
-const PRIORITY_DOT: Record<string, string> = {
-  high: "bg-rose-500",
-  medium: "bg-amber-400",
-  low: "bg-emerald-400",
-};
-
-export const PendingHistoryModal: React.FC<PendingHistoryModalProps> = ({
+export const NotDoneHistoryModal: React.FC<NotDoneHistoryModalProps> = ({
   isOpen,
   onClose,
   onTasksChanged,
@@ -44,10 +25,10 @@ export const PendingHistoryModal: React.FC<PendingHistoryModalProps> = ({
   const loadTasks = useCallback(async () => {
     setIsLoading(true);
     try {
-      const data = await getPendingTasks();
+      const data = await getNotDoneTasks();
       setTasks(data);
     } catch (err) {
-      console.error("Failed to load pending tasks:", err);
+      console.error("Failed to load not-done tasks:", err);
     } finally {
       setIsLoading(false);
     }
@@ -70,16 +51,14 @@ export const PendingHistoryModal: React.FC<PendingHistoryModalProps> = ({
     sortOrder === "desc" ? b.localeCompare(a) : a.localeCompare(b)
   );
 
-  const handleMarkDone = async (task: Task) => {
+  const handleReopen = async (task: Task) => {
     setProcessingIds((prev) => new Set(prev).add(task.id));
-    // Optimistic removal
     setTasks((prev) => prev.filter((t) => t.id !== task.id));
     try {
-      await toggleComplete(task.id, true);
+      await setTaskStatus(task.id, 0); // 0 = active / pending
       onTasksChanged();
     } catch (err) {
-      console.error("Failed to mark task done:", err);
-      // Revert on failure
+      console.error("Failed to reopen task:", err);
       setTasks((prev) => [...prev, task].sort((a, b) => b.date.localeCompare(a.date)));
     } finally {
       setProcessingIds((prev) => {
@@ -90,14 +69,14 @@ export const PendingHistoryModal: React.FC<PendingHistoryModalProps> = ({
     }
   };
 
-  const handleMarkNotDone = async (task: Task) => {
+  const handleMarkDone = async (task: Task) => {
     setProcessingIds((prev) => new Set(prev).add(task.id));
     setTasks((prev) => prev.filter((t) => t.id !== task.id));
     try {
-      await setTaskStatus(task.id, 2); // 2 = not done
+      await setTaskStatus(task.id, 1); // 1 = done
       onTasksChanged();
     } catch (err) {
-      console.error("Failed to mark task as not done:", err);
+      console.error("Failed to mark task done:", err);
       setTasks((prev) => [...prev, task].sort((a, b) => b.date.localeCompare(a.date)));
     } finally {
       setProcessingIds((prev) => {
@@ -145,47 +124,48 @@ export const PendingHistoryModal: React.FC<PendingHistoryModalProps> = ({
       onClick={onClose}
     >
       <div
-        className="w-[calc(100%-1.5rem)] max-w-lg h-[88vh] flex flex-col glass-modal overflow-hidden animate-scale-up"
+        className="w-[calc(100%-1.5rem)] max-w-lg h-[88vh] flex flex-col glass-modal overflow-hidden animate-scale-up border-rose-500/20"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
         <div className="flex items-center justify-between p-5 pb-3 border-b border-white/[0.08] flex-shrink-0">
           <div className="flex items-center space-x-2.5">
-            <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-rose-500 to-orange-400 flex items-center justify-center shadow-md shadow-rose-500/30">
+            <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-rose-600 to-red-500 flex items-center justify-center shadow-md shadow-rose-500/30">
               <svg
                 className="w-4 h-4 text-white"
                 fill="none"
                 viewBox="0 0 24 24"
                 stroke="currentColor"
-                strokeWidth={2}
+                strokeWidth={2.5}
               >
                 <path
                   strokeLinecap="round"
                   strokeLinejoin="round"
-                  d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"
+                  d="M6 18L18 6M6 6l12 12"
                 />
               </svg>
             </div>
             <div>
               <h2 className="text-sm font-bold text-white/95 flex items-center space-x-2">
-                <span>Pending Tasks</span>
+                <span>Not Done Tasks</span>
                 {totalCount > 0 && (
-                  <span className="inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full bg-rose-500/80 text-white text-[10px] font-bold">
+                  <span className="inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full bg-rose-500 text-white text-[10px] font-bold shadow-sm shadow-rose-500/50">
                     {totalCount}
                   </span>
                 )}
               </h2>
-              <p className="text-[10px] text-white/40">
-                Grouped by date · incomplete tasks only
+              <p className="text-[10px] text-rose-300/60">
+                Tasks marked as missed or incomplete
               </p>
             </div>
           </div>
+
           <div className="flex items-center space-x-2">
             {/* Sort Toggle */}
             <button
               type="button"
               onClick={() => setSortOrder((s) => (s === "desc" ? "asc" : "desc"))}
-              title={sortOrder === "desc" ? "Showing newest first — click for oldest first" : "Showing oldest first — click for newest first"}
+              title={sortOrder === "desc" ? "Showing newest first" : "Showing oldest first"}
               className="flex items-center space-x-1.5 px-2.5 py-1.5 rounded-lg glass-button text-[10px] font-medium text-white/60 hover:text-white cursor-pointer"
             >
               <svg
@@ -206,6 +186,7 @@ export const PendingHistoryModal: React.FC<PendingHistoryModalProps> = ({
               </svg>
               <span>{sortOrder === "desc" ? "Newest" : "Oldest"}</span>
             </button>
+
             {/* Close */}
             <button
               type="button"
@@ -234,15 +215,15 @@ export const PendingHistoryModal: React.FC<PendingHistoryModalProps> = ({
           {isLoading && (
             <div className="flex flex-col items-center justify-center h-32 space-y-3">
               <div className="w-6 h-6 rounded-full border-2 border-rose-400 border-t-transparent animate-spin" />
-              <p className="text-xs text-white/40">Loading pending tasks…</p>
+              <p className="text-xs text-white/40">Loading not-done tasks…</p>
             </div>
           )}
 
           {!isLoading && totalCount === 0 && (
             <div className="flex flex-col items-center justify-center h-40 text-center space-y-2">
-              <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center">
+              <div className="w-12 h-12 rounded-2xl bg-white/[0.04] border border-white/[0.08] flex items-center justify-center">
                 <svg
-                  className="w-6 h-6 text-emerald-400"
+                  className="w-6 h-6 text-white/40"
                   fill="none"
                   viewBox="0 0 24 24"
                   stroke="currentColor"
@@ -255,84 +236,55 @@ export const PendingHistoryModal: React.FC<PendingHistoryModalProps> = ({
                   />
                 </svg>
               </div>
-              <p className="text-sm font-semibold text-emerald-400">All caught up!</p>
-              <p className="text-xs text-white/30">No pending tasks anywhere 🎉</p>
+              <p className="text-sm font-semibold text-white/80">No Not-Done Tasks</p>
+              <p className="text-xs text-white/40">No tasks currently marked as not done ✨</p>
             </div>
           )}
 
           {!isLoading && sortedDates.length > 0 && (
             <div className="space-y-4">
               {sortedDates.map((dateStr) => {
-                const status = getDateStatus(dateStr);
                 const dateTasks = grouped[dateStr];
-
-                const headerClass = {
-                  overdue: "text-rose-400 border-rose-500/30 bg-rose-500/[0.06]",
-                  yesterday: "text-orange-400 border-orange-500/30 bg-orange-500/[0.06]",
-                  today: "text-indigo-400 border-indigo-500/30 bg-indigo-500/[0.06]",
-                  future: "text-white/60 border-white/[0.08] bg-white/[0.02]",
-                }[status];
-
-                const statusLabel = {
-                  overdue: "● Overdue",
-                  yesterday: "● Yesterday",
-                  today: "★ Today",
-                  future: "↑ Upcoming",
-                }[status];
 
                 return (
                   <div key={dateStr}>
                     {/* Date group header */}
-                    <div
-                      className={clsx(
-                        "flex items-center justify-between px-3 py-1.5 rounded-xl border mb-2",
-                        headerClass
-                      )}
-                    >
+                    <div className="flex items-center justify-between px-3 py-1.5 rounded-xl border border-rose-500/30 bg-rose-950/[0.25] text-rose-300 mb-2">
                       <span className="text-xs font-bold">
                         {formatDateHeader(dateStr)}
                       </span>
-                      <div className="flex items-center space-x-2">
-                        <span className="text-[10px] font-medium opacity-70">
-                          {statusLabel}
-                        </span>
-                        <span className="text-[10px] font-bold opacity-60">
-                          {dateTasks.length} task{dateTasks.length !== 1 ? "s" : ""}
-                        </span>
-                      </div>
+                      <span className="text-[10px] font-bold opacity-75">
+                        {dateTasks.length} task{dateTasks.length !== 1 ? "s" : ""}
+                      </span>
                     </div>
 
                     {/* Task rows */}
                     <div className="space-y-1.5 pl-1">
                       {dateTasks.map((task) => {
                         const isProcessing = processingIds.has(task.id);
-                        const isOverdueTask = status === "overdue" || status === "yesterday";
 
                         return (
                           <div
                             key={task.id}
                             className={clsx(
-                              "flex items-center justify-between px-3 py-2.5 rounded-xl border transition-all group",
-                              isOverdueTask
-                                ? "bg-rose-500/[0.04] border-rose-500/20 hover:border-rose-500/35"
-                                : "bg-white/[0.02] border-white/[0.07] hover:border-white/[0.14]",
+                              "flex items-center justify-between px-3 py-2.5 rounded-xl border border-rose-500/25 bg-rose-950/[0.12] hover:border-rose-500/40 transition-all group",
                               isProcessing && "opacity-50"
                             )}
                           >
                             <div className="flex items-center space-x-2.5 min-w-0">
-                              {/* Priority dot */}
-                              <span
-                                className={clsx(
-                                  "w-2 h-2 rounded-full flex-shrink-0",
-                                  PRIORITY_DOT[task.priority] ?? "bg-white/30"
-                                )}
-                              />
+                              {/* Red Cross Icon */}
+                              <div className="w-4 h-4 rounded-md bg-rose-500/20 border border-rose-500/40 flex items-center justify-center flex-shrink-0">
+                                <svg className="w-2.5 h-2.5 text-rose-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                              </div>
+
                               <div className="min-w-0">
-                                <p className="text-xs font-medium text-white/85 truncate">
+                                <p className="text-xs font-medium text-rose-200/85 line-through truncate">
                                   {task.title}
                                 </p>
                                 {task.time && (
-                                  <p className="text-[10px] text-white/35 mt-0.5">
+                                  <p className="text-[10px] text-white/35 mt-0.5 font-mono">
                                     {task.time}
                                   </p>
                                 )}
@@ -340,31 +292,36 @@ export const PendingHistoryModal: React.FC<PendingHistoryModalProps> = ({
                             </div>
 
                             {/* Actions */}
-                            <div className="flex items-center space-x-1 flex-shrink-0 ml-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <div className="flex items-center space-x-1.5 flex-shrink-0 ml-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                              {/* Reopen / Move to Pending */}
+                              <button
+                                type="button"
+                                onClick={() => handleReopen(task)}
+                                disabled={isProcessing}
+                                title="Reopen / Move back to Pending"
+                                className="flex items-center space-x-1 px-2 py-1 rounded-lg bg-indigo-500/20 border border-indigo-500/30 text-indigo-300 hover:bg-indigo-500/30 text-[10px] font-medium transition-colors cursor-pointer disabled:opacity-50"
+                              >
+                                <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                                </svg>
+                                <span>Reopen</span>
+                              </button>
+
+                              {/* Mark as Done */}
                               <button
                                 type="button"
                                 onClick={() => handleMarkDone(task)}
                                 disabled={isProcessing}
-                                title="Mark as done"
-                                className="flex items-center space-x-1 px-2 py-1 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 hover:bg-emerald-500/20 text-[10px] font-medium transition-colors cursor-pointer disabled:opacity-50"
+                                title="Mark as Done"
+                                className="flex items-center space-x-1 px-2 py-1 rounded-lg bg-emerald-500/20 border border-emerald-500/30 text-emerald-300 hover:bg-emerald-500/30 text-[10px] font-medium transition-colors cursor-pointer disabled:opacity-50"
                               >
                                 <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                                   <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                                 </svg>
                                 <span>Done</span>
                               </button>
-                              <button
-                                type="button"
-                                onClick={() => handleMarkNotDone(task)}
-                                disabled={isProcessing}
-                                title="Mark as Not Done"
-                                className="flex items-center space-x-1 px-2 py-1 rounded-lg bg-rose-500/10 border border-rose-500/20 text-rose-300 hover:bg-rose-500/20 text-[10px] font-medium transition-colors cursor-pointer disabled:opacity-50"
-                              >
-                                <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                                </svg>
-                                <span>Not Done</span>
-                              </button>
+
+                              {/* Delete */}
                               <button
                                 type="button"
                                 onClick={() => handleDelete(task)}
@@ -392,4 +349,4 @@ export const PendingHistoryModal: React.FC<PendingHistoryModalProps> = ({
   );
 };
 
-export default PendingHistoryModal;
+export default NotDoneHistoryModal;

@@ -6,6 +6,7 @@ import clsx from "clsx";
 interface TaskCardProps {
   task: Task;
   onToggleComplete: (id: number, completed: boolean) => void;
+  onSetStatus?: (id: number, status: number) => void;
   onEdit: (task: Task) => void;
   onDelete: (id: number) => void;
 }
@@ -13,10 +14,12 @@ interface TaskCardProps {
 export const TaskCard: React.FC<TaskCardProps> = ({
   task,
   onToggleComplete,
+  onSetStatus,
   onEdit,
   onDelete,
 }) => {
   const isCompleted = task.completed === 1;
+  const isNotDone = task.completed === 2;
 
   const priorityColor = {
     low: "bg-emerald-400 shadow-emerald-500/50",
@@ -24,22 +27,42 @@ export const TaskCard: React.FC<TaskCardProps> = ({
     high: "bg-rose-500 shadow-rose-500/50",
   }[task.priority || "medium"];
 
+  const handleCheckboxClick = () => {
+    if (onSetStatus) {
+      if (task.completed === 0) {
+        onSetStatus(task.id, 1); // Mark as done
+      } else {
+        onSetStatus(task.id, 0); // Reset to active/pending
+      }
+    } else {
+      onToggleComplete(task.id, !isCompleted);
+    }
+  };
+
   return (
     <div
       className={clsx(
         "group relative glass-card p-3 rounded-2xl transition-all duration-200 flex items-start space-x-3",
-        isCompleted && "opacity-45 bg-white/[0.02] border-white/[0.05]"
+        isCompleted && "opacity-45 bg-white/[0.02] border-white/[0.05]",
+        isNotDone && "bg-rose-950/[0.12] border-rose-500/30 shadow-sm shadow-rose-950/40"
       )}
     >
-      {/* Checkbox Button */}
+      {/* Checkbox / Status Button */}
       <button
         type="button"
-        onClick={() => onToggleComplete(task.id, !isCompleted)}
+        onClick={handleCheckboxClick}
+        title={
+          isCompleted
+            ? "Completed (Click to uncheck)"
+            : isNotDone
+            ? "Marked as Not Done (Click to reset)"
+            : "Click to mark as done"
+        }
         className={clsx(
           "w-5 h-5 mt-0.5 rounded-lg flex items-center justify-center transition-all duration-200 flex-shrink-0 cursor-pointer",
-          isCompleted
-            ? "bg-indigo-600 border border-indigo-400 text-white"
-            : "border border-white/30 hover:border-indigo-400 bg-white/[0.04]"
+          isCompleted && "bg-indigo-600 border border-indigo-400 text-white",
+          isNotDone && "bg-rose-500/20 border border-rose-500 text-rose-400 hover:bg-rose-500/30",
+          !isCompleted && !isNotDone && "border border-white/30 hover:border-indigo-400 bg-white/[0.04]"
         )}
       >
         {isCompleted && (
@@ -54,6 +77,21 @@ export const TaskCard: React.FC<TaskCardProps> = ({
               strokeLinecap="round"
               strokeLinejoin="round"
               d="M5 13l4 4L19 7"
+            />
+          </svg>
+        )}
+        {isNotDone && (
+          <svg
+            className="w-3 h-3 text-rose-400"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            strokeWidth={3}
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M6 18L18 6M6 6l12 12"
             />
           </svg>
         )}
@@ -74,11 +112,18 @@ export const TaskCard: React.FC<TaskCardProps> = ({
           <h3
             className={clsx(
               "text-sm font-medium text-white/90 truncate transition-all",
-              isCompleted && "line-through text-white/50"
+              isCompleted && "line-through text-white/50",
+              isNotDone && "line-through text-rose-300/70"
             )}
           >
             {task.title}
           </h3>
+
+          {isNotDone && (
+            <span className="px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider bg-rose-500/20 text-rose-300 border border-rose-500/30 flex-shrink-0">
+              Not Done
+            </span>
+          )}
 
           {task.time && (
             <span className="text-[11px] font-mono px-1.5 py-0.5 rounded bg-white/[0.06] text-white/70 border border-white/[0.08] flex-shrink-0">
@@ -91,7 +136,8 @@ export const TaskCard: React.FC<TaskCardProps> = ({
           <div
             className={clsx(
               "task-card-note text-xs text-white/60 mt-1 leading-relaxed break-words",
-              isCompleted && "text-white/40"
+              isCompleted && "text-white/40",
+              isNotDone && "text-rose-200/50"
             )}
           >
             <ReactMarkdown
@@ -137,13 +183,42 @@ export const TaskCard: React.FC<TaskCardProps> = ({
         )}
       </div>
 
-      {/* Action Buttons (Edit / Delete) */}
+      {/* Action Buttons (Done / Not Done / Edit / Delete) */}
       <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center space-x-1 flex-shrink-0">
+        {/* Quick Not Done Button (if active or completed) */}
+        {onSetStatus && !isNotDone && (
+          <button
+            type="button"
+            onClick={() => onSetStatus(task.id, 2)}
+            title="Mark as Not Done"
+            className="w-6 h-6 rounded-md flex items-center justify-center text-white/50 hover:text-rose-300 hover:bg-rose-500/20 transition-colors cursor-pointer"
+          >
+            <svg className="w-3.5 h-3.5 text-rose-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        )}
+
+        {/* Quick Done Button (if not done) */}
+        {onSetStatus && isNotDone && (
+          <button
+            type="button"
+            onClick={() => onSetStatus(task.id, 1)}
+            title="Mark as Done"
+            className="w-6 h-6 rounded-md flex items-center justify-center text-white/50 hover:text-emerald-300 hover:bg-emerald-500/20 transition-colors cursor-pointer"
+          >
+            <svg className="w-3.5 h-3.5 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+            </svg>
+          </button>
+        )}
+
+        {/* Edit Button */}
         <button
           type="button"
           onClick={() => onEdit(task)}
           title="Edit Task"
-          className="w-6 h-6 rounded-md flex items-center justify-center text-white/60 hover:text-white hover:bg-white/[0.1] transition-colors"
+          className="w-6 h-6 rounded-md flex items-center justify-center text-white/60 hover:text-white hover:bg-white/[0.1] transition-colors cursor-pointer"
         >
           <svg
             className="w-3.5 h-3.5"
@@ -160,11 +235,12 @@ export const TaskCard: React.FC<TaskCardProps> = ({
           </svg>
         </button>
 
+        {/* Delete Button */}
         <button
           type="button"
           onClick={() => onDelete(task.id)}
           title="Delete Task"
-          className="w-6 h-6 rounded-md flex items-center justify-center text-white/60 hover:text-rose-400 hover:bg-rose-500/20 transition-colors"
+          className="w-6 h-6 rounded-md flex items-center justify-center text-white/60 hover:text-rose-400 hover:bg-rose-500/20 transition-colors cursor-pointer"
         >
           <svg
             className="w-3.5 h-3.5"

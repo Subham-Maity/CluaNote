@@ -7,6 +7,7 @@ interface TimelineProps {
   selectedDate: string; // 'YYYY-MM-DD'
   tasks: Task[]; // Timed tasks for the selected date
   onToggleComplete: (id: number, completed: boolean) => void;
+  onSetStatus?: (id: number, status: number) => void;
   onEdit: (task: Task) => void;
   onDelete: (id: number) => void;
 }
@@ -15,6 +16,7 @@ export const Timeline: React.FC<TimelineProps> = ({
   selectedDate,
   tasks,
   onToggleComplete,
+  onSetStatus,
   onEdit,
   onDelete,
 }) => {
@@ -86,6 +88,7 @@ export const Timeline: React.FC<TimelineProps> = ({
                         key={task.id}
                         task={task}
                         onToggleComplete={onToggleComplete}
+                        onSetStatus={onSetStatus}
                         onEdit={onEdit}
                         onDelete={onDelete}
                       />

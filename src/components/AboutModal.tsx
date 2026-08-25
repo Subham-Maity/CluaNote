@@ -86,7 +86,7 @@ export const AboutModal: React.FC<AboutModalProps> = ({ isOpen, onClose }) => {
         </div>
 
         <h2 className="text-lg font-bold text-white tracking-wide">CluaNote</h2>
-        <p className="text-xs text-white/50 mt-0.5">Version 0.3.1</p>
+        <p className="text-xs text-white/50 mt-0.5">Version 0.3.2</p>
 
         <p className="text-xs text-white/70 mt-2.5 leading-relaxed">
           A fast, minimalist, dark glassmorphic desktop task planner built for focus and speed.

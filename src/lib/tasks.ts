@@ -48,6 +48,21 @@ export async function getPendingTasks(): Promise<Task[]> {
 }
 
 /**
+ * Fetches all tasks marked as Not Done (completed = 2) across all dates.
+ * Used by the Not Done History modal. Results ordered by date DESC then time ASC.
+ */
+export async function getNotDoneTasks(): Promise<Task[]> {
+  const db = await getDb();
+  const rows = await db.select<Task[]>(
+    `SELECT id, title, note, date, time, priority, completed, created_at 
+     FROM tasks 
+     WHERE completed = 2
+     ORDER BY date DESC, time ASC, id ASC`
+  );
+  return rows;
+}
+
+/**
  * Fetches all incomplete tasks from yesterday.
  * Used by the Pending Reminder Banner shown on app open.
  */
@@ -152,6 +167,7 @@ export async function deleteTask(id: number): Promise<void> {
 
 /**
  * Toggles or sets the completion status of a task.
+ * If completed is true, sets to 1 (done). If false, sets to 0 (pending/active).
  */
 export async function toggleComplete(
   id: number,
@@ -165,13 +181,30 @@ export async function toggleComplete(
 }
 
 /**
+ * Sets the explicit status of a task:
+ * 0 = active/pending
+ * 1 = completed/done
+ * 2 = not done / missed
+ */
+export async function setTaskStatus(
+  id: number,
+  status: number
+): Promise<void> {
+  const db = await getDb();
+  await db.execute("UPDATE tasks SET completed = $1 WHERE id = $2", [
+    status,
+    id,
+  ]);
+}
+
+/**
  * Exports all tasks as a JSON formatted string for backup.
  */
 export async function exportAllTasksJson(): Promise<string> {
   const tasks = await getAllTasks();
   const backup = {
     appName: "CluaNote",
-    version: "0.3.1",
+    version: "0.3.2",
     exportedAt: new Date().toISOString(),
     totalTasks: tasks.length,
     tasks,

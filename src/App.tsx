@@ -13,6 +13,7 @@ import { UpdateBanner } from "./components/UpdateBanner";
 import { UpdateModal } from "./components/UpdateModal";
 import { ReleaseNotesModal } from "./components/ReleaseNotesModal";
 import { PendingHistoryModal } from "./components/PendingHistoryModal";
+import { NotDoneHistoryModal } from "./components/NotDoneHistoryModal";
 import { PendingReminderBanner } from "./components/PendingReminderBanner";
 import {
   getTasks,
@@ -21,7 +22,9 @@ import {
   updateTask,
   deleteTask,
   toggleComplete,
+  setTaskStatus,
   getPendingTasks,
+  getNotDoneTasks,
   getYesterdayPendingTasks,
 } from "./lib/tasks";
 import {
@@ -55,9 +58,11 @@ export function App() {
   const [isUpdateModalOpen, setIsUpdateModalOpen] = useState(false);
   const [isReleaseNotesOpen, setIsReleaseNotesOpen] = useState(false);
 
-  // Feature 2: Pending task history
+  // Feature 2: Pending & Not-Done task history
   const [isPendingHistoryOpen, setIsPendingHistoryOpen] = useState(false);
   const [pendingCount, setPendingCount] = useState(0);
+  const [isNotDoneHistoryOpen, setIsNotDoneHistoryOpen] = useState(false);
+  const [notDoneCount, setNotDoneCount] = useState(0);
 
   // Feature 3: Yesterday reminder banner
   const [reminderTasks, setReminderTasks] = useState<Task[]>([]);
@@ -114,11 +119,14 @@ export function App() {
     });
   }, []);
 
-  // Feature 2 + 3: Load pending task counts and yesterday reminders on mount
+  // Feature 2 + 3: Load pending task counts, not-done counts, and yesterday reminders
   const refreshPendingState = useCallback(async () => {
     try {
       const all = await getPendingTasks();
       setPendingCount(all.length);
+
+      const notDone = await getNotDoneTasks();
+      setNotDoneCount(notDone.length);
 
       const yesterday = await getYesterdayPendingTasks();
       // Filter out tasks the user dismissed (stored per-task in localStorage)
@@ -131,7 +139,7 @@ export function App() {
         setShowReminderBanner(true);
       }
     } catch (err) {
-      console.warn("Could not load pending task state:", err);
+      console.warn("Could not load pending/not-done task state:", err);
     }
   }, []);
 
@@ -189,6 +197,22 @@ export function App() {
     } catch (err) {
       console.error("Failed to toggle task completion:", err);
       // Revert optimistic update on failure
+      setTasks(previousTasks);
+    }
+  };
+
+  // Explicit set task status (0 = active, 1 = completed, 2 = not done)
+  const handleSetStatus = async (id: number, status: number) => {
+    const previousTasks = [...tasks];
+    setTasks((prev) =>
+      prev.map((t) => (t.id === id ? { ...t, completed: status } : t))
+    );
+
+    try {
+      await setTaskStatus(id, status);
+      refreshPendingState();
+    } catch (err) {
+      console.error("Failed to set task status:", err);
       setTasks(previousTasks);
     }
   };
@@ -275,6 +299,20 @@ export function App() {
     }
   };
 
+  const handleReminderMarkNotDone = async (task: Task) => {
+    setReminderTasks((prev) => prev.filter((t) => t.id !== task.id));
+    if (reminderTasks.length <= 1) setShowReminderBanner(false);
+    try {
+      await setTaskStatus(task.id, 2); // 2 = not done
+      refreshPendingState();
+      if (task.date === selectedDate) {
+        await fetchTasks(selectedDate);
+      }
+    } catch (err) {
+      console.error("Failed to mark reminder task as not done:", err);
+    }
+  };
+
   // Filter tasks into anytime vs timed
   const anytimeTasks = tasks.filter((t) => !t.time || t.time.trim() === "");
   const timedTasks = tasks.filter((t) => t.time && t.time.trim() !== "");
@@ -291,8 +329,10 @@ export function App() {
         onOpenBackup={() => setIsBackupOpen(true)}
         onOpenReleaseNotes={() => setIsReleaseNotesOpen(true)}
         onOpenPendingHistory={() => setIsPendingHistoryOpen(true)}
+        onOpenNotDoneHistory={() => setIsNotDoneHistoryOpen(true)}
         isAlarmActive={isAlarmActive}
         pendingCount={pendingCount}
+        notDoneCount={notDoneCount}
         updateAvailable={updateInfo?.hasUpdate ?? false}
         onCheckUpdate={() => setIsUpdateModalOpen(true)}
       />
@@ -342,6 +382,7 @@ export function App() {
           onDismissTask={handleDismissReminderTask}
           onDismissAll={handleDismissAllReminders}
           onMarkDone={handleReminderMarkDone}
+          onMarkNotDone={handleReminderMarkNotDone}
         />
       )}
 
@@ -354,6 +395,7 @@ export function App() {
         <AnytimeSection
           tasks={anytimeTasks}
           onToggleComplete={handleToggleComplete}
+          onSetStatus={handleSetStatus}
           onEdit={handleEditTask}
           onDelete={handleDeleteTask}
         />
@@ -392,6 +434,7 @@ export function App() {
           selectedDate={selectedDate}
           tasks={timedTasks}
           onToggleComplete={handleToggleComplete}
+          onSetStatus={handleSetStatus}
           onEdit={handleEditTask}
           onDelete={handleDeleteTask}
         />
@@ -449,6 +492,13 @@ export function App() {
       <PendingHistoryModal
         isOpen={isPendingHistoryOpen}
         onClose={() => setIsPendingHistoryOpen(false)}
+        onTasksChanged={refreshPendingState}
+      />
+
+      {/* Not Done Task History Log Modal */}
+      <NotDoneHistoryModal
+        isOpen={isNotDoneHistoryOpen}
+        onClose={() => setIsNotDoneHistoryOpen(false)}
         onTasksChanged={refreshPendingState}
       />
     </div>

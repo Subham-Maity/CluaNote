@@ -7,8 +7,10 @@ interface TitleBarProps {
   onOpenBackup: () => void;
   onOpenReleaseNotes: () => void;
   onOpenPendingHistory: () => void;
+  onOpenNotDoneHistory: () => void;
   isAlarmActive: boolean;
   pendingCount: number;
+  notDoneCount: number;
   updateAvailable: boolean;
   onCheckUpdate: () => void;
 }
@@ -19,8 +21,10 @@ export function TitleBar({
   onOpenBackup,
   onOpenReleaseNotes,
   onOpenPendingHistory,
+  onOpenNotDoneHistory,
   isAlarmActive,
   pendingCount,
+  notDoneCount,
   updateAvailable,
   onCheckUpdate,
 }: TitleBarProps) {
@@ -163,8 +167,35 @@ export function TitleBar({
             />
           </svg>
           {pendingCount > 0 && (
-            <span className="absolute -top-0.5 -right-0.5 min-w-[14px] h-3.5 px-0.5 rounded-full bg-rose-500 text-white text-[8px] font-bold flex items-center justify-center shadow-sm">
+            <span className="absolute -top-0.5 -right-0.5 min-w-[14px] h-3.5 px-0.5 rounded-full bg-amber-500 text-white text-[8px] font-bold flex items-center justify-center shadow-sm">
               {pendingCount > 99 ? "99+" : pendingCount}
+            </span>
+          )}
+        </button>
+
+        {/* Not Done Tasks History Button */}
+        <button
+          type="button"
+          onClick={onOpenNotDoneHistory}
+          title={`Not Done Tasks Log (${notDoneCount} not done)`}
+          className="relative w-8 h-8 rounded-md flex items-center justify-center text-white/70 hover:text-rose-300 hover:bg-rose-500/10 transition-colors cursor-pointer"
+        >
+          <svg
+            className="w-4 h-4 text-rose-400"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            strokeWidth={2}
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-1 7l4 4m0-4l-4 4"
+            />
+          </svg>
+          {notDoneCount > 0 && (
+            <span className="absolute -top-0.5 -right-0.5 min-w-[14px] h-3.5 px-0.5 rounded-full bg-rose-500 text-white text-[8px] font-bold flex items-center justify-center shadow-sm shadow-rose-500/50">
+              {notDoneCount > 99 ? "99+" : notDoneCount}
             </span>
           )}
         </button>
