@@ -2,7 +2,7 @@ use aes_gcm::{
     aead::{Aead, KeyInit},
     Aes256Gcm, Nonce,
 };
-use chrono::Utc;
+use chrono::{DateTime, Utc};
 use rand::Rng;
 use serde::{Deserialize, Serialize};
 use std::fs;
@@ -10,6 +10,16 @@ use std::path::PathBuf;
 use std::sync::Mutex;
 use tauri::{AppHandle, Manager};
 use url::Url;
+
+fn parse_iso_or_now(iso_str: &str) -> DateTime<Utc> {
+    if let Ok(dt) = DateTime::parse_from_rfc3339(iso_str) {
+        dt.with_timezone(&Utc)
+    } else if let Ok(naive) = chrono::NaiveDateTime::parse_from_str(iso_str, "%Y-%m-%d %H:%M:%S") {
+        DateTime::from_naive_utc_and_offset(naive, Utc)
+    } else {
+        Utc::now()
+    }
+}
 
 const TABLE_INIT_SQL: &str = r#"
 CREATE TABLE IF NOT EXISTS cluanote_tasks (
@@ -19,7 +29,7 @@ CREATE TABLE IF NOT EXISTS cluanote_tasks (
     date VARCHAR(10) NOT NULL,
     time VARCHAR(10),
     priority VARCHAR(10) NOT NULL DEFAULT 'medium',
-    completed INTEGER NOT NULL DEFAULT 0,
+    completed SMALLINT NOT NULL DEFAULT 0,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     is_deleted BOOLEAN NOT NULL DEFAULT FALSE
@@ -459,7 +469,7 @@ pub async fn sync_postgres_impl(
                 uuid, title, note, date, time, priority, completed, created_at, updated_at, is_deleted
             )
             VALUES (
-                $1, $2, $3, $4, $5, $6, $7::integer, $8::timestamptz, $9::timestamptz, $10::boolean
+                $1, $2, $3, $4, $5, $6, $7, $8, $9, $10
             )
             ON CONFLICT (uuid) DO UPDATE SET
                 title = EXCLUDED.title,
@@ -478,7 +488,9 @@ pub async fn sync_postgres_impl(
 
     for local in &local_tasks {
         let is_deleted_bool = local.is_deleted == 1;
-        let completed_i32: i32 = local.completed;
+        let completed_i16: i16 = local.completed as i16;
+        let created_at_dt: DateTime<Utc> = parse_iso_or_now(&local.created_at);
+        let updated_at_dt: DateTime<Utc> = parse_iso_or_now(&local.updated_at);
 
         tx.execute(
             &upsert_stmt,
@@ -489,9 +501,9 @@ pub async fn sync_postgres_impl(
                 &local.date,
                 &local.time,
                 &local.priority,
-                &completed_i32,
-                &local.created_at,
-                &local.updated_at,
+                &completed_i16,
+                &created_at_dt,
+                &updated_at_dt,
                 &is_deleted_bool,
             ],
         )

@@ -276,7 +276,7 @@ export async function exportAllTasksJson(): Promise<string> {
   const tasks = await getAllTasks();
   const backup = {
     appName: "CluaNote",
-    version: "0.3.6",
+    version: "0.3.7",
     exportedAt: new Date().toISOString(),
     totalTasks: tasks.length,
     tasks,
