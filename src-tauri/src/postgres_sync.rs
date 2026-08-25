@@ -19,7 +19,7 @@ CREATE TABLE IF NOT EXISTS cluanote_tasks (
     date VARCHAR(10) NOT NULL,
     time VARCHAR(10),
     priority VARCHAR(10) NOT NULL DEFAULT 'medium',
-    completed SMALLINT NOT NULL DEFAULT 0,
+    completed INTEGER NOT NULL DEFAULT 0,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     is_deleted BOOLEAN NOT NULL DEFAULT FALSE
@@ -36,10 +36,10 @@ pub struct SyncTask {
     pub date: String,
     pub time: Option<String>,
     pub priority: String,
-    pub completed: i16,
+    pub completed: i32,
     pub created_at: String,
     pub updated_at: String,
-    pub is_deleted: i16, // 0 = active, 1 = deleted
+    pub is_deleted: i32, // 0 = active, 1 = deleted
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -402,7 +402,10 @@ pub async fn sync_postgres_impl(
         let date: String = row.get("date");
         let time: Option<String> = row.get("time");
         let priority: String = row.get("priority");
-        let completed: i16 = row.get("completed");
+        let completed: i32 = match row.try_get::<_, i32>("completed") {
+            Ok(v) => v,
+            Err(_) => row.get::<_, i16>("completed") as i32,
+        };
         let created_at: String = row.get("created_at_str");
         let updated_at: String = row.get("updated_at_str");
         let is_deleted_bool: bool = row.get("is_deleted");
@@ -430,7 +433,7 @@ pub async fn sync_postgres_impl(
                 uuid, title, note, date, time, priority, completed, created_at, updated_at, is_deleted
             )
             VALUES (
-                $1, $2, $3, $4, $5, $6, $7, $8::timestamptz, $9::timestamptz, $10
+                $1, $2, $3, $4, $5, $6, $7::integer, $8::timestamptz, $9::timestamptz, $10::boolean
             )
             ON CONFLICT (uuid) DO UPDATE SET
                 title = EXCLUDED.title,
@@ -449,6 +452,7 @@ pub async fn sync_postgres_impl(
 
     for local in &local_tasks {
         let is_deleted_bool = local.is_deleted == 1;
+        let completed_i32: i32 = local.completed;
 
         tx.execute(
             &upsert_stmt,
@@ -459,7 +463,7 @@ pub async fn sync_postgres_impl(
                 &local.date,
                 &local.time,
                 &local.priority,
-                &local.completed,
+                &completed_i32,
                 &local.created_at,
                 &local.updated_at,
                 &is_deleted_bool,

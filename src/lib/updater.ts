@@ -5,7 +5,7 @@
  */
 
 const GITHUB_REPO = "Subham-Maity/CluaNote";
-const CURRENT_VERSION = "0.3.4"; // Keep in sync with tauri.conf.json / package.json
+const CURRENT_VERSION = "0.3.5"; // Keep in sync with tauri.conf.json / package.json
 
 export interface GitHubRelease {
   id: number;
