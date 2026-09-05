@@ -169,6 +169,32 @@ export const NotesKanbanModal: React.FC<NotesKanbanModalProps> = ({
     }
   };
 
+  // ───── Status Change (Dropdown) ─────
+  const handleStatusChange = async (task: KanbanTask, newStatus: KanbanStatus) => {
+    if (task.kanbanStatus === newStatus) return;
+    const oldStatus = task.kanbanStatus;
+
+    // Optimistic update: card moves to the target column immediately
+    setNotes((prev) =>
+      prev.map((n) =>
+        n.id === task.id ? { ...n, kanbanStatus: newStatus } : n
+      )
+    );
+
+    try {
+      await updateTask(task.id, { completed: kanbanToCompleted(newStatus) });
+      onDataChanged();
+    } catch (err) {
+      console.error("Failed to update kanban status via dropdown:", err);
+      // Revert
+      setNotes((prev) =>
+        prev.map((n) =>
+          n.id === task.id ? { ...n, kanbanStatus: oldStatus } : n
+        )
+      );
+    }
+  };
+
   // ───── Actions ─────
   const handlePushToEvent = async (task: KanbanTask) => {
     setNotes((p) => p.filter((n) => n.id !== task.id));
@@ -333,19 +359,24 @@ export const NotesKanbanModal: React.FC<NotesKanbanModalProps> = ({
                         >
                           {/* Card top – click to expand */}
                           <div
-                            className="px-3 py-2.5 space-y-1.5 cursor-pointer"
+                            className="px-3 py-2.5 space-y-2 cursor-pointer"
                             onClick={() => setExpandedId(isExpanded ? null : task.id)}
                           >
                             <div className="flex items-start justify-between gap-2">
                               <p className="text-xs font-semibold text-white/88 leading-tight line-clamp-2 flex-1">
                                 {task.title}
                               </p>
-                              <span
-                                className={clsx(
-                                  "w-2 h-2 rounded-full flex-shrink-0 mt-0.5",
-                                  PRIORITY_DOT[task.priority] ?? "bg-white/20"
-                                )}
-                              />
+                              <div className="flex items-center space-x-1.5 shrink-0 mt-0.5">
+                                <span className={clsx("text-[9px] font-semibold", PRIORITY_COLOR[task.priority])}>
+                                  {task.priority}
+                                </span>
+                                <span
+                                  className={clsx(
+                                    "w-2 h-2 rounded-full",
+                                    PRIORITY_DOT[task.priority] ?? "bg-white/20"
+                                  )}
+                                />
+                              </div>
                             </div>
 
                             {task.note && (
@@ -354,12 +385,38 @@ export const NotesKanbanModal: React.FC<NotesKanbanModalProps> = ({
                               </p>
                             )}
 
-                            <div className="flex items-center justify-between">
-                              <span className="text-[9px] text-white/25 font-medium">
+                            <div className="flex items-center justify-between gap-2 pt-1.5 border-t border-white/[0.05]">
+                              {/* Status Dropdown */}
+                              <div
+                                className="flex items-center space-x-1"
+                                onClick={(e) => e.stopPropagation()}
+                                onMouseDown={(e) => e.stopPropagation()}
+                                onDragStart={(e) => { e.preventDefault(); e.stopPropagation(); }}
+                              >
+                                <select
+                                  value={task.kanbanStatus}
+                                  onChange={(e) => {
+                                    e.stopPropagation();
+                                    handleStatusChange(task, e.target.value as KanbanStatus);
+                                  }}
+                                  onClick={(e) => e.stopPropagation()}
+                                  onMouseDown={(e) => e.stopPropagation()}
+                                  className={clsx(
+                                    "text-[10px] font-semibold rounded-md px-2 py-0.5 border cursor-pointer transition-all outline-none",
+                                    task.kanbanStatus === "todo" && "bg-slate-500/15 text-slate-300 border-slate-500/30 hover:bg-slate-500/25",
+                                    task.kanbanStatus === "doing" && "bg-amber-500/15 text-amber-300 border-amber-500/35 hover:bg-amber-500/25",
+                                    task.kanbanStatus === "done" && "bg-emerald-500/15 text-emerald-300 border-emerald-500/35 hover:bg-emerald-500/25"
+                                  )}
+                                  title="Change status to move between columns"
+                                >
+                                  <option value="todo" className="bg-[#181920] text-slate-300">📋 To-Do</option>
+                                  <option value="doing" className="bg-[#181920] text-amber-300">⚡ In Progress</option>
+                                  <option value="done" className="bg-[#181920] text-emerald-300">✅ Done</option>
+                                </select>
+                              </div>
+
+                              <span className="text-[9px] text-white/30 font-medium">
                                 {format(parseISO(task.date), "MMM d, yyyy")}
-                              </span>
-                              <span className={clsx("text-[9px] font-semibold", PRIORITY_COLOR[task.priority])}>
-                                {task.priority}
                               </span>
                             </div>
                           </div>
