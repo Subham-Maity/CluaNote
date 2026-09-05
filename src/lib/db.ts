@@ -59,6 +59,14 @@ export async function initDb(): Promise<Database> {
         // column already exists
       }
 
+      try {
+        await db.execute(
+          `ALTER TABLE tasks ADD COLUMN is_future_note INTEGER NOT NULL DEFAULT 0;`
+        );
+      } catch {
+        // column already exists
+      }
+
       // Auto-backfill UUIDs for any existing tasks created before sync was added
       try {
         const unassigned = await db.select<{ id: number }[]>(
@@ -90,6 +98,14 @@ export async function initDb(): Promise<Database> {
         );
       } catch (err) {
         console.warn("is_deleted backfill notice:", err);
+      }
+
+      try {
+        await db.execute(
+          `UPDATE tasks SET is_future_note = 0 WHERE is_future_note IS NULL`
+        );
+      } catch (err) {
+        console.warn("is_future_note backfill notice:", err);
       }
 
       try {

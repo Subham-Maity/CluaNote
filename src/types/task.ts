@@ -13,6 +13,7 @@ export interface Task {
   created_at: string;
   updated_at: string; // ISO UTC timestamp for conflict resolution
   is_deleted: number; // 0 = active, 1 = deleted (tombstone)
+  is_future_note: number; // 0 = regular task/event, 1 = future planning note (Kanban only)
 }
 
 export interface NewTask {
@@ -22,6 +23,7 @@ export interface NewTask {
   time?: string | null; // 'HH:MM'
   priority?: TaskPriority;
   uuid?: string;
+  is_future_note?: number; // 0 = regular task, 1 = future planning note
 }
 
 export type UpdateTaskInput = Partial<Omit<Task, "id" | "created_at">>;
@@ -37,6 +39,7 @@ export interface SyncTask {
   created_at: string;
   updated_at: string;
   is_deleted: number;
+  is_future_note: number; // 0 = regular task, 1 = future planning note
 }
 
 export interface PostgresConfigInfo {
@@ -61,4 +64,3 @@ export interface SyncResult {
   synced_at: string;
   message: string;
 }
-

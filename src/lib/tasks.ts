@@ -7,9 +7,9 @@ import type { NewTask, Task, UpdateTaskInput, SyncTask } from "../types/task";
 export async function getTasks(date: string): Promise<Task[]> {
   const db = await getDb();
   const rows = await db.select<Task[]>(
-    `SELECT id, uuid, title, note, date, time, priority, completed, created_at, updated_at, is_deleted 
+    `SELECT id, uuid, title, note, date, time, priority, completed, created_at, updated_at, is_deleted, is_future_note 
      FROM tasks 
-     WHERE is_deleted = 0 AND date = $1 
+     WHERE is_deleted = 0 AND date = $1 AND is_future_note = 0
      ORDER BY 
        CASE WHEN time IS NULL THEN 0 ELSE 1 END,
        time ASC, 
@@ -25,7 +25,7 @@ export async function getTasks(date: string): Promise<Task[]> {
 export async function getAllTasks(): Promise<Task[]> {
   const db = await getDb();
   const rows = await db.select<Task[]>(
-    `SELECT id, uuid, title, note, date, time, priority, completed, created_at, updated_at, is_deleted 
+    `SELECT id, uuid, title, note, date, time, priority, completed, created_at, updated_at, is_deleted, is_future_note 
      FROM tasks 
      WHERE is_deleted = 0
      ORDER BY date ASC, time ASC, id ASC`
@@ -39,7 +39,7 @@ export async function getAllTasks(): Promise<Task[]> {
 export async function getAllTasksForSync(): Promise<SyncTask[]> {
   const db = await getDb();
   const rows = await db.select<SyncTask[]>(
-    `SELECT uuid, title, note, date, time, priority, completed, created_at, updated_at, is_deleted 
+    `SELECT uuid, title, note, date, time, priority, completed, created_at, updated_at, is_deleted, is_future_note 
      FROM tasks 
      ORDER BY updated_at ASC`
   );
@@ -53,9 +53,9 @@ export async function getAllTasksForSync(): Promise<SyncTask[]> {
 export async function getPendingTasks(): Promise<Task[]> {
   const db = await getDb();
   const rows = await db.select<Task[]>(
-    `SELECT id, uuid, title, note, date, time, priority, completed, created_at, updated_at, is_deleted 
+    `SELECT id, uuid, title, note, date, time, priority, completed, created_at, updated_at, is_deleted, is_future_note 
      FROM tasks 
-     WHERE is_deleted = 0 AND completed = 0
+     WHERE is_deleted = 0 AND completed = 0 AND is_future_note = 0
      ORDER BY date DESC, time ASC, id ASC`
   );
   return rows;
@@ -68,9 +68,9 @@ export async function getPendingTasks(): Promise<Task[]> {
 export async function getNotDoneTasks(): Promise<Task[]> {
   const db = await getDb();
   const rows = await db.select<Task[]>(
-    `SELECT id, uuid, title, note, date, time, priority, completed, created_at, updated_at, is_deleted 
+    `SELECT id, uuid, title, note, date, time, priority, completed, created_at, updated_at, is_deleted, is_future_note 
      FROM tasks 
-     WHERE is_deleted = 0 AND completed = 2
+     WHERE is_deleted = 0 AND completed = 2 AND is_future_note = 0
      ORDER BY date DESC, time ASC, id ASC`
   );
   return rows;
@@ -83,14 +83,58 @@ export async function getNotDoneTasks(): Promise<Task[]> {
 export async function getYesterdayPendingTasks(): Promise<Task[]> {
   const db = await getDb();
   const rows = await db.select<Task[]>(
-    `SELECT id, uuid, title, note, date, time, priority, completed, created_at, updated_at, is_deleted 
+    `SELECT id, uuid, title, note, date, time, priority, completed, created_at, updated_at, is_deleted, is_future_note 
      FROM tasks 
      WHERE is_deleted = 0 
        AND completed = 0
+       AND is_future_note = 0
        AND date = date('now', '-1 day')
      ORDER BY time ASC, id ASC`
   );
   return rows;
+}
+
+/**
+ * Fetches all completed tasks (completed = 1) across all dates, excluding future notes.
+ * Used by the Completed History modal.
+ */
+export async function getCompletedTasks(): Promise<Task[]> {
+  const db = await getDb();
+  const rows = await db.select<Task[]>(
+    `SELECT id, uuid, title, note, date, time, priority, completed, created_at, updated_at, is_deleted, is_future_note 
+     FROM tasks 
+     WHERE is_deleted = 0 AND completed = 1 AND is_future_note = 0
+     ORDER BY date DESC, time ASC, id ASC`
+  );
+  return rows;
+}
+
+/**
+ * Fetches all future planning notes (is_future_note = 1) that are not soft-deleted.
+ * Used by the Notes Kanban board.
+ */
+export async function getFutureNotes(): Promise<Task[]> {
+  const db = await getDb();
+  const rows = await db.select<Task[]>(
+    `SELECT id, uuid, title, note, date, time, priority, completed, created_at, updated_at, is_deleted, is_future_note 
+     FROM tasks 
+     WHERE is_future_note = 1 AND is_deleted = 0
+     ORDER BY created_at DESC`
+  );
+  return rows;
+}
+
+/**
+ * Promotes a future planning note to a real event by clearing its is_future_note flag.
+ * After this call, the task will appear in the main timeline on its saved date.
+ */
+export async function pushNoteToEvent(id: number): Promise<void> {
+  const db = await getDb();
+  const nowIso = new Date().toISOString();
+  await db.execute(
+    "UPDATE tasks SET is_future_note = 0, updated_at = $1 WHERE id = $2",
+    [nowIso, id]
+  );
 }
 
 /**
@@ -107,8 +151,8 @@ export async function addTask(task: NewTask): Promise<void> {
   const nowIso = new Date().toISOString();
 
   await db.execute(
-    `INSERT INTO tasks (uuid, title, note, date, time, priority, completed, created_at, updated_at, is_deleted) 
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
+    `INSERT INTO tasks (uuid, title, note, date, time, priority, completed, created_at, updated_at, is_deleted, is_future_note) 
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
     [
       uuid,
       title,
@@ -120,6 +164,7 @@ export async function addTask(task: NewTask): Promise<void> {
       nowIso,
       nowIso,
       0,
+      task.is_future_note ?? 0,
     ]
   );
 }
@@ -237,8 +282,8 @@ export async function batchUpsertFromSync(pulledTasks: SyncTask[]): Promise<numb
   let mergedCount = 0;
   for (const t of pulledTasks) {
     await db.execute(
-      `INSERT INTO tasks (uuid, title, note, date, time, priority, completed, created_at, updated_at, is_deleted)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+      `INSERT INTO tasks (uuid, title, note, date, time, priority, completed, created_at, updated_at, is_deleted, is_future_note)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
        ON CONFLICT (uuid) DO UPDATE SET
          title = excluded.title,
          note = excluded.note,
@@ -248,7 +293,8 @@ export async function batchUpsertFromSync(pulledTasks: SyncTask[]): Promise<numb
          completed = excluded.completed,
          created_at = excluded.created_at,
          updated_at = excluded.updated_at,
-         is_deleted = excluded.is_deleted
+         is_deleted = excluded.is_deleted,
+         is_future_note = excluded.is_future_note
        WHERE excluded.updated_at >= tasks.updated_at;`,
       [
         t.uuid,
@@ -261,6 +307,7 @@ export async function batchUpsertFromSync(pulledTasks: SyncTask[]): Promise<numb
         t.created_at,
         t.updated_at,
         t.is_deleted,
+        t.is_future_note ?? 0,
       ]
     );
     mergedCount++;
@@ -276,7 +323,7 @@ export async function exportAllTasksJson(): Promise<string> {
   const tasks = await getAllTasks();
   const backup = {
     appName: "CluaNote",
-    version: "0.3.8",
+    version: "0.4.0",
     exportedAt: new Date().toISOString(),
     totalTasks: tasks.length,
     tasks,
@@ -306,8 +353,8 @@ export async function importTasksFromJson(jsonData: string): Promise<number> {
     const uuid = t.uuid || crypto.randomUUID();
     const nowIso = new Date().toISOString();
     await db.execute(
-      `INSERT INTO tasks (uuid, title, note, date, time, priority, completed, created_at, updated_at, is_deleted) 
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 0)`,
+      `INSERT INTO tasks (uuid, title, note, date, time, priority, completed, created_at, updated_at, is_deleted, is_future_note) 
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 0, $10)`,
       [
         uuid,
         t.title.trim(),
@@ -318,6 +365,8 @@ export async function importTasksFromJson(jsonData: string): Promise<number> {
         t.completed || 0,
         t.created_at || nowIso,
         t.updated_at || nowIso,
+        // Backward-compatible: old backups without is_future_note default to 0 (regular task)
+        (t as Task & { is_future_note?: number }).is_future_note ?? 0,
       ]
     );
     count++;

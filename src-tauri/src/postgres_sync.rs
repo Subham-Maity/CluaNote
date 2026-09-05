@@ -32,11 +32,13 @@ CREATE TABLE IF NOT EXISTS cluanote_tasks (
     completed INTEGER NOT NULL DEFAULT 0,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    is_deleted BOOLEAN NOT NULL DEFAULT FALSE
+    is_deleted BOOLEAN NOT NULL DEFAULT FALSE,
+    is_future_note INTEGER NOT NULL DEFAULT 0
 );
 CREATE INDEX IF NOT EXISTS idx_cluanote_tasks_date ON cluanote_tasks(date);
 CREATE INDEX IF NOT EXISTS idx_cluanote_tasks_updated ON cluanote_tasks(updated_at);
 ALTER TABLE cluanote_tasks ALTER COLUMN completed TYPE INTEGER;
+ALTER TABLE cluanote_tasks ADD COLUMN IF NOT EXISTS is_future_note INTEGER NOT NULL DEFAULT 0;
 "#;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -51,6 +53,7 @@ pub struct SyncTask {
     pub created_at: String,
     pub updated_at: String,
     pub is_deleted: i32, // 0 = active, 1 = deleted
+    pub is_future_note: i32, // 0 = regular task, 1 = future planning note
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -446,6 +449,7 @@ pub async fn sync_postgres_impl(
         let created_at: String = row.get("created_at_str");
         let updated_at: String = row.get("updated_at_str");
         let is_deleted_bool: bool = row.get("is_deleted");
+        let is_future_note: i32 = row.try_get::<_, i32>("is_future_note").unwrap_or(0);
 
         remote_tasks.push(SyncTask {
             uuid,
@@ -458,6 +462,7 @@ pub async fn sync_postgres_impl(
             created_at,
             updated_at,
             is_deleted: if is_deleted_bool { 1 } else { 0 },
+            is_future_note,
         });
     }
 
@@ -467,10 +472,10 @@ pub async fn sync_postgres_impl(
         .prepare(
             r#"
             INSERT INTO cluanote_tasks (
-                uuid, title, note, date, time, priority, completed, created_at, updated_at, is_deleted
+                uuid, title, note, date, time, priority, completed, created_at, updated_at, is_deleted, is_future_note
             )
             VALUES (
-                $1, $2, $3, $4, $5, $6, $7, $8, $9, $10
+                $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11
             )
             ON CONFLICT (uuid) DO UPDATE SET
                 title = EXCLUDED.title,
@@ -480,7 +485,8 @@ pub async fn sync_postgres_impl(
                 priority = EXCLUDED.priority,
                 completed = EXCLUDED.completed,
                 updated_at = EXCLUDED.updated_at,
-                is_deleted = EXCLUDED.is_deleted
+                is_deleted = EXCLUDED.is_deleted,
+                is_future_note = EXCLUDED.is_future_note
             WHERE EXCLUDED.updated_at >= cluanote_tasks.updated_at;
             "#,
         )
@@ -490,6 +496,7 @@ pub async fn sync_postgres_impl(
     for local in &local_tasks {
         let is_deleted_bool = local.is_deleted == 1;
         let completed_i32: i32 = local.completed as i32;
+        let is_future_note_i32: i32 = local.is_future_note;
         let created_at_dt: DateTime<Utc> = parse_iso_or_now(&local.created_at);
         let updated_at_dt: DateTime<Utc> = parse_iso_or_now(&local.updated_at);
 
@@ -506,6 +513,7 @@ pub async fn sync_postgres_impl(
                 &created_at_dt,
                 &updated_at_dt,
                 &is_deleted_bool,
+                &is_future_note_i32,
             ],
         )
         .await
