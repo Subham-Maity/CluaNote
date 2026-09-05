@@ -5,7 +5,7 @@
  */
 
 const GITHUB_REPO = "Subham-Maity/CluaNote";
-export const CURRENT_VERSION = "0.4.1"; // Keep in sync with tauri.conf.json / package.json
+export const CURRENT_VERSION = "0.4.2"; // Keep in sync with tauri.conf.json / package.json
 
 /** Reads the real app version from Tauri at runtime — falls back to CURRENT_VERSION */
 export async function getCurrentVersion(): Promise<string> {
