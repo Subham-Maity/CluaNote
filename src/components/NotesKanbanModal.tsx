@@ -121,33 +121,45 @@ export const NotesKanbanModal: React.FC<NotesKanbanModalProps> = ({
   notes.forEach((n) => columns[n.kanbanStatus].push(n));
 
   // ───── Drag & Drop ─────
-  const handleDragStart = (task: KanbanTask) => {
+  const handleDragStart = (task: KanbanTask, e: React.DragEvent) => {
     dragTask.current = task;
     setDraggingId(task.id);
+    e.dataTransfer.setData("text/plain", String(task.id));
+    e.dataTransfer.effectAllowed = "move";
   };
   const handleDragEnd = () => {
     setDraggingId(null);
     setDragOverCol(null);
     dragTask.current = null;
   };
-  const handleDrop = async (targetCol: KanbanStatus) => {
-    const task = dragTask.current;
+  const handleDrop = async (targetCol: KanbanStatus, e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    const rawId = e.dataTransfer.getData("text/plain");
+    const taskId = rawId ? Number(rawId) : dragTask.current?.id;
+    const task = notes.find((n) => n.id === taskId) || dragTask.current;
+
+    setDragOverCol(null);
+    setDraggingId(null);
+    dragTask.current = null;
+
     if (!task || task.kanbanStatus === targetCol) {
-      setDragOverCol(null);
-      setDraggingId(null);
       return;
     }
+
     // Optimistic update
     setNotes((prev) =>
       prev.map((n) =>
         n.id === task.id ? { ...n, kanbanStatus: targetCol } : n
       )
     );
-    setDragOverCol(null);
-    setDraggingId(null);
+
     try {
       await updateTask(task.id, { completed: kanbanToCompleted(targetCol) });
-    } catch {
+      onDataChanged();
+    } catch (err) {
+      console.error("Failed to update kanban status:", err);
       // Revert
       setNotes((prev) =>
         prev.map((n) =>
@@ -264,9 +276,12 @@ export const NotesKanbanModal: React.FC<NotesKanbanModalProps> = ({
                       ? "border-violet-500/50 ring-1 ring-violet-500/30"
                       : col.border
                   )}
-                  onDragOver={(e) => { e.preventDefault(); setDragOverCol(col.id); }}
-                  onDragLeave={() => setDragOverCol(null)}
-                  onDrop={() => handleDrop(col.id)}
+                  onDragOver={(e) => {
+                    e.preventDefault();
+                    e.dataTransfer.dropEffect = "move";
+                    if (dragOverCol !== col.id) setDragOverCol(col.id);
+                  }}
+                  onDrop={(e) => handleDrop(col.id, e)}
                 >
                   {/* Column Header */}
                   <div className={clsx("flex items-center justify-between px-4 py-3 rounded-t-2xl border-b", col.headerBg)}>
@@ -275,7 +290,15 @@ export const NotesKanbanModal: React.FC<NotesKanbanModalProps> = ({
                   </div>
 
                   {/* Cards */}
-                  <div className="flex-1 overflow-y-auto p-3 space-y-2.5">
+                  <div
+                    className="flex-1 overflow-y-auto p-3 space-y-2.5"
+                    onDragOver={(e) => {
+                      e.preventDefault();
+                      e.dataTransfer.dropEffect = "move";
+                      if (dragOverCol !== col.id) setDragOverCol(col.id);
+                    }}
+                    onDrop={(e) => handleDrop(col.id, e)}
+                  >
                     {colTasks.length === 0 && (
                       <div className={clsx(
                         "flex items-center justify-center h-16 rounded-xl border border-dashed text-[10px] transition-all",
@@ -294,8 +317,14 @@ export const NotesKanbanModal: React.FC<NotesKanbanModalProps> = ({
                         <div
                           key={task.id}
                           draggable
-                          onDragStart={() => handleDragStart(task)}
+                          onDragStart={(e) => handleDragStart(task, e)}
                           onDragEnd={handleDragEnd}
+                          onDragOver={(e) => {
+                            e.preventDefault();
+                            e.dataTransfer.dropEffect = "move";
+                            if (dragOverCol !== col.id) setDragOverCol(col.id);
+                          }}
+                          onDrop={(e) => handleDrop(col.id, e)}
                           className={clsx(
                             "rounded-xl border transition-all cursor-grab active:cursor-grabbing select-none",
                             "bg-white/[0.03] border-white/[0.09] hover:border-white/[0.16] hover:bg-white/[0.05]",

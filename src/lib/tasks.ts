@@ -132,7 +132,7 @@ export async function pushNoteToEvent(id: number): Promise<void> {
   const db = await getDb();
   const nowIso = new Date().toISOString();
   await db.execute(
-    "UPDATE tasks SET is_future_note = 0, updated_at = $1 WHERE id = $2",
+    "UPDATE tasks SET is_future_note = 0, completed = 0, updated_at = $1 WHERE id = $2",
     [nowIso, id]
   );
 }
@@ -323,7 +323,7 @@ export async function exportAllTasksJson(): Promise<string> {
   const tasks = await getAllTasks();
   const backup = {
     appName: "CluaNote",
-    version: "0.4.0",
+    version: "0.4.1",
     exportedAt: new Date().toISOString(),
     totalTasks: tasks.length,
     tasks,

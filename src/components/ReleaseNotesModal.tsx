@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import ReactMarkdown from "react-markdown";
 import { openUrl } from "@tauri-apps/plugin-opener";
-import { fetchAllReleases, CURRENT_VERSION } from "../lib/updater";
+import { fetchAllReleases, CURRENT_VERSION, getCurrentVersion } from "../lib/updater";
 import type { GitHubRelease } from "../lib/updater";
 import { format } from "date-fns";
 
@@ -14,10 +14,17 @@ export const ReleaseNotesModal: React.FC<ReleaseNotesModalProps> = ({
   isOpen,
   onClose,
 }) => {
+  const [currentVersion, setCurrentVersion] = useState(CURRENT_VERSION);
   const [releases, setReleases] = useState<GitHubRelease[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [expandedId, setExpandedId] = useState<number | null>(null);
+
+  useEffect(() => {
+    getCurrentVersion().then((v) => {
+      if (v) setCurrentVersion(v);
+    });
+  }, []);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -128,8 +135,8 @@ export const ReleaseNotesModal: React.FC<ReleaseNotesModalProps> = ({
           {!isLoading &&
             releases.map((release) => {
               const isCurrent =
-                release.tag_name.replace(/^v/, "") === CURRENT_VERSION ||
-                release.tag_name === `v${CURRENT_VERSION}`;
+                release.tag_name.replace(/^v/, "") === currentVersion ||
+                release.tag_name === `v${currentVersion}`;
               const isExpanded = expandedId === release.id;
 
               return (

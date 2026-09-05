@@ -5,7 +5,19 @@
  */
 
 const GITHUB_REPO = "Subham-Maity/CluaNote";
-const CURRENT_VERSION = "0.3.8"; // Keep in sync with tauri.conf.json / package.json
+export const CURRENT_VERSION = "0.4.1"; // Keep in sync with tauri.conf.json / package.json
+
+/** Reads the real app version from Tauri at runtime — falls back to CURRENT_VERSION */
+export async function getCurrentVersion(): Promise<string> {
+  try {
+    const { getVersion } = await import("@tauri-apps/api/app");
+    const v = await getVersion();
+    return v || CURRENT_VERSION;
+  } catch {
+    // Fallback for browser/dev context outside Tauri
+    return CURRENT_VERSION;
+  }
+}
 
 export interface GitHubRelease {
   id: number;
@@ -76,11 +88,18 @@ const RELEASES_CACHE_KEY = "cluanote_all_releases";
  * @param force If true, bypasses sessionStorage cache and queries GitHub API fresh.
  */
 export async function checkForUpdate(force = false): Promise<UpdateCheckResult> {
+  const runtimeVersion = await getCurrentVersion();
+  const currentVer = runtimeVersion && runtimeVersion !== "0.0.0" ? runtimeVersion : CURRENT_VERSION;
+
   try {
     if (!force) {
       const cached = sessionStorage.getItem(SESSION_CACHE_KEY);
       if (cached) {
-        return JSON.parse(cached) as UpdateCheckResult;
+        const parsed = JSON.parse(cached) as UpdateCheckResult;
+        // If the cached result was from a previous version session, discard it
+        if (parsed.currentVersion === currentVer) {
+          return parsed;
+        }
       }
     }
 
@@ -98,7 +117,7 @@ export async function checkForUpdate(force = false): Promise<UpdateCheckResult> 
 
     const release: GitHubRelease = await response.json();
     const latestVersion = release.tag_name;
-    const hasUpdate = isNewerVersion(latestVersion, CURRENT_VERSION);
+    const hasUpdate = isNewerVersion(latestVersion, currentVer);
 
     // Try to find a direct installer asset (e.g. .exe / .msi for Windows, .dmg for macOS, .AppImage for Linux)
     const assets: ReleaseAsset[] = (release.assets || []).map((a) => ({
@@ -118,7 +137,7 @@ export async function checkForUpdate(force = false): Promise<UpdateCheckResult> 
     const result: UpdateCheckResult = {
       hasUpdate,
       latestVersion,
-      currentVersion: CURRENT_VERSION,
+      currentVersion: currentVer,
       releaseName: release.name || release.tag_name,
       releaseUrl: release.html_url,
       releaseBody: release.body || "",
@@ -134,9 +153,9 @@ export async function checkForUpdate(force = false): Promise<UpdateCheckResult> 
     console.warn("Update check failed (offline or rate-limited?):", err);
     return {
       hasUpdate: false,
-      latestVersion: CURRENT_VERSION,
-      currentVersion: CURRENT_VERSION,
-      releaseName: `v${CURRENT_VERSION}`,
+      latestVersion: currentVer,
+      currentVersion: currentVer,
+      releaseName: `v${currentVer}`,
       releaseUrl: `https://github.com/${GITHUB_REPO}/releases`,
       releaseBody: "",
       publishedAt: "",
@@ -178,5 +197,3 @@ export async function fetchAllReleases(): Promise<GitHubRelease[]> {
     return [];
   }
 }
-
-export { CURRENT_VERSION };
