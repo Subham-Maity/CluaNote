@@ -8,9 +8,12 @@ interface TitleBarProps {
   onOpenReleaseNotes: () => void;
   onOpenPendingHistory: () => void;
   onOpenNotDoneHistory: () => void;
+  onOpenCompletedHistory: () => void;
+  onOpenNotesKanban: () => void;
   isAlarmActive: boolean;
   pendingCount: number;
   notDoneCount: number;
+  completedCount: number;
   updateAvailable: boolean;
   onCheckUpdate: () => void;
 }
@@ -22,9 +25,12 @@ export function TitleBar({
   onOpenReleaseNotes,
   onOpenPendingHistory,
   onOpenNotDoneHistory,
+  onOpenCompletedHistory,
+  onOpenNotesKanban,
   isAlarmActive,
   pendingCount,
   notDoneCount,
+  completedCount,
   updateAvailable,
   onCheckUpdate,
 }: TitleBarProps) {
@@ -198,6 +204,55 @@ export function TitleBar({
               {notDoneCount > 99 ? "99+" : notDoneCount}
             </span>
           )}
+        </button>
+
+        {/* Completed Tasks History Button */}
+        <button
+          type="button"
+          onClick={onOpenCompletedHistory}
+          title={`Completed Tasks (${completedCount} done)`}
+          className="relative w-8 h-8 rounded-md flex items-center justify-center text-white/70 hover:text-emerald-300 hover:bg-emerald-500/10 transition-colors cursor-pointer"
+        >
+          <svg
+            className="w-4 h-4 text-emerald-400"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            strokeWidth={2}
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+            />
+          </svg>
+          {completedCount > 0 && (
+            <span className="absolute -top-0.5 -right-0.5 min-w-[14px] h-3.5 px-0.5 rounded-full bg-emerald-500 text-white text-[8px] font-bold flex items-center justify-center shadow-sm shadow-emerald-500/50">
+              {completedCount > 99 ? "99+" : completedCount}
+            </span>
+          )}
+        </button>
+
+        {/* Notes Kanban Board Button */}
+        <button
+          type="button"
+          onClick={onOpenNotesKanban}
+          title="Future Notes Kanban Board"
+          className="relative w-8 h-8 rounded-md flex items-center justify-center text-white/70 hover:text-violet-300 hover:bg-violet-500/10 transition-colors cursor-pointer"
+        >
+          <svg
+            className="w-4 h-4 text-violet-400"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            strokeWidth={2}
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2"
+            />
+          </svg>
         </button>
 
         {/* Release Notes / Changelog Button */}

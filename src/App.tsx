@@ -14,6 +14,9 @@ import { UpdateModal } from "./components/UpdateModal";
 import { ReleaseNotesModal } from "./components/ReleaseNotesModal";
 import { PendingHistoryModal } from "./components/PendingHistoryModal";
 import { NotDoneHistoryModal } from "./components/NotDoneHistoryModal";
+import { CompletedHistoryModal } from "./components/CompletedHistoryModal";
+import { CreateFutureNoteModal } from "./components/CreateFutureNoteModal";
+import { NotesKanbanModal } from "./components/NotesKanbanModal";
 import { PendingReminderBanner } from "./components/PendingReminderBanner";
 import {
   getTasks,
@@ -25,6 +28,7 @@ import {
   setTaskStatus,
   getPendingTasks,
   getNotDoneTasks,
+  getCompletedTasks,
   getYesterdayPendingTasks,
 } from "./lib/tasks";
 import {
@@ -59,11 +63,17 @@ export function App() {
   const [isUpdateModalOpen, setIsUpdateModalOpen] = useState(false);
   const [isReleaseNotesOpen, setIsReleaseNotesOpen] = useState(false);
 
-  // Feature 2: Pending & Not-Done task history
+  // Feature 2: Pending & Not-Done & Completed task history
   const [isPendingHistoryOpen, setIsPendingHistoryOpen] = useState(false);
   const [pendingCount, setPendingCount] = useState(0);
   const [isNotDoneHistoryOpen, setIsNotDoneHistoryOpen] = useState(false);
   const [notDoneCount, setNotDoneCount] = useState(0);
+  const [isCompletedHistoryOpen, setIsCompletedHistoryOpen] = useState(false);
+  const [completedCount, setCompletedCount] = useState(0);
+
+  // Feature 4: Create Future Note & Notes Kanban
+  const [isCreateFutureNoteOpen, setIsCreateFutureNoteOpen] = useState(false);
+  const [isNotesKanbanOpen, setIsNotesKanbanOpen] = useState(false);
 
   // Feature 3: Yesterday reminder banner
   const [reminderTasks, setReminderTasks] = useState<Task[]>([]);
@@ -120,7 +130,7 @@ export function App() {
     });
   }, []);
 
-  // Feature 2 + 3: Load pending task counts, not-done counts, and yesterday reminders
+  // Feature 2 + 3: Load pending task counts, not-done counts, completed counts, and yesterday reminders
   const refreshPendingState = useCallback(async () => {
     try {
       const all = await getPendingTasks();
@@ -128,6 +138,9 @@ export function App() {
 
       const notDone = await getNotDoneTasks();
       setNotDoneCount(notDone.length);
+
+      const completed = await getCompletedTasks();
+      setCompletedCount(completed.length);
 
       const yesterday = await getYesterdayPendingTasks();
       // Filter out tasks the user dismissed (stored per-task in localStorage)
@@ -285,6 +298,11 @@ export function App() {
     setIsAddTaskOpen(true);
   };
 
+  /** Jump to a specific date (used by history modals' Jump button) */
+  const handleJumpToDate = (date: string) => {
+    setSelectedDate(date);
+  };
+
   // Feature 3: Reminder banner handlers
   const handleDismissReminderTask = (taskId: number) => {
     // Persist dismissal to localStorage so it survives page refreshes
@@ -350,9 +368,12 @@ export function App() {
         onOpenReleaseNotes={() => setIsReleaseNotesOpen(true)}
         onOpenPendingHistory={() => setIsPendingHistoryOpen(true)}
         onOpenNotDoneHistory={() => setIsNotDoneHistoryOpen(true)}
+        onOpenCompletedHistory={() => setIsCompletedHistoryOpen(true)}
+        onOpenNotesKanban={() => setIsNotesKanbanOpen(true)}
         isAlarmActive={isAlarmActive}
         pendingCount={pendingCount}
         notDoneCount={notDoneCount}
+        completedCount={completedCount}
         updateAvailable={updateInfo?.hasUpdate ?? false}
         onCheckUpdate={() => setIsUpdateModalOpen(true)}
       />
@@ -460,8 +481,11 @@ export function App() {
         />
       </main>
 
-      {/* Floating Add Task Action Button */}
-      <FloatingAddButton onClick={handleOpenAddModal} />
+      {/* Floating Add Task + CREATE Note Action Buttons */}
+      <FloatingAddButton
+        onClick={handleOpenAddModal}
+        onCreateNote={() => setIsCreateFutureNoteOpen(true)}
+      />
 
       {/* Add / Edit Task Glass Modal */}
       <AddTaskModal
@@ -513,6 +537,7 @@ export function App() {
         isOpen={isPendingHistoryOpen}
         onClose={() => setIsPendingHistoryOpen(false)}
         onTasksChanged={refreshPendingState}
+        onJumpToDate={handleJumpToDate}
       />
 
       {/* Not Done Task History Log Modal */}
@@ -520,6 +545,33 @@ export function App() {
         isOpen={isNotDoneHistoryOpen}
         onClose={() => setIsNotDoneHistoryOpen(false)}
         onTasksChanged={refreshPendingState}
+        onJumpToDate={handleJumpToDate}
+      />
+
+      {/* Completed Task History Modal */}
+      <CompletedHistoryModal
+        isOpen={isCompletedHistoryOpen}
+        onClose={() => setIsCompletedHistoryOpen(false)}
+        onTasksChanged={refreshPendingState}
+        onJumpToDate={handleJumpToDate}
+      />
+
+      {/* Create Future Planning Note Modal */}
+      <CreateFutureNoteModal
+        isOpen={isCreateFutureNoteOpen}
+        onClose={() => setIsCreateFutureNoteOpen(false)}
+        onCreated={refreshPendingState}
+      />
+
+      {/* Notes Kanban Board — full-screen overlay */}
+      <NotesKanbanModal
+        isOpen={isNotesKanbanOpen}
+        onClose={() => setIsNotesKanbanOpen(false)}
+        onDataChanged={refreshPendingState}
+        onJumpToDate={(date) => {
+          setIsNotesKanbanOpen(false);
+          handleJumpToDate(date);
+        }}
       />
     </div>
   );
