@@ -1,6 +1,6 @@
 [package]
 name = "cluanote-sync-server"
-version = "0.4.3"
+version = "0.4.4"
 edition = "2021"
 description = "Lightweight cross-platform sync server for CluaNote"
 authors = ["Subham Maity <https://github.com/Subham-Maity>"]
