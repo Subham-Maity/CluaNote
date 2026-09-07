@@ -38,7 +38,9 @@
           "icon": "./assets/notification-icon.png",
           "color": "#4f46e5"
         }
-      ]
+      ],
+      "expo-font",
+      "expo-sqlite"
     ],
     "experiments": {
       "typedRoutes": true
