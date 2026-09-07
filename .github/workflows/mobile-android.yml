@@ -6,15 +6,12 @@ on:
       - 'v*'
     branches:
       - main
-    paths:
-      - 'apps/mobile/**'
-      - 'packages/shared/**'
-      - '.github/workflows/mobile-android.yml'
   pull_request:
     paths:
       - 'apps/mobile/**'
       - 'packages/shared/**'
       - '.github/workflows/mobile-android.yml'
+      - '.npmrc'
   workflow_dispatch:
 
 permissions:
@@ -48,7 +45,7 @@ jobs:
         uses: android-actions/setup-android@v3
 
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+        run: pnpm install --no-frozen-lockfile --shamefully-hoist
 
       - name: Expo Prebuild (Generate Android native project)
         working-directory: apps/mobile
