@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.subhammaity.cluanote-sync</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>/usr/local/bin/cluanote-sync-server</string>
+    </array>
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>CLUANOTE_SYNC_HOST</key>
+        <string>0.0.0.0</string>
+        <key>CLUANOTE_SYNC_PORT</key>
+        <string>7842</string>
+    </dict>
+    <key>RunAtLoad</key>
+    <true/>
+    <key>KeepAlive</key>
+    <true/>
+    <key>StandardOutPath</key>
+    <string>/var/log/cluanote-sync.log</string>
+    <key>StandardErrorPath</key>
+    <string>/var/log/cluanote-sync-err.log</string>
+</dict>
+</plist>

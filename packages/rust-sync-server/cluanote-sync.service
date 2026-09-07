@@ -1,0 +1,15 @@
+[Unit]
+Description=CluaNote Sync Server
+After=network.target
+
+[Service]
+Type=simple
+User=root
+ExecStart=/usr/local/bin/cluanote-sync-server
+Restart=always
+RestartSec=5
+Environment=CLUANOTE_SYNC_HOST=0.0.0.0
+Environment=CLUANOTE_SYNC_PORT=7842
+
+[Install]
+WantedBy=multi-user.target

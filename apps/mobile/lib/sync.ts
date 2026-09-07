@@ -1,13 +1,17 @@
 import * as SecureStore from "expo-secure-store";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { AppState, type AppStateStatus } from "react-native";
+import * as BackgroundTask from "expo-background-task";
+import * as TaskManager from "expo-task-manager";
 import { getAllTasksForSync, batchUpsertFromSync, getAllTasks } from "./tasks";
 import { rescheduleAllAlarms } from "./alarm";
 import type { SyncTask } from "@cluanote/shared";
 
 export const SYNC_URL_STORE_KEY = "cluanote_sync_url";
+export const SYNC_SERVER_URL_KEY = "cluanote_sync_url";
 export const AUTO_SYNC_ENABLED_KEY = "cluanote_auto_sync_enabled";
 export const LAST_SYNCED_AT_KEY = "cluanote_last_synced_at";
+export const SYNC_TASK_NAME = "CLUANOTE_POSTGRES_SYNC";
 
 export interface SyncConfig {
   isConfigured: boolean;
@@ -463,3 +467,72 @@ export function startMobileAutoSync(
     subscription.remove();
   };
 }
+
+// Register background task definition for OS execution
+if (!TaskManager.isTaskDefined(SYNC_TASK_NAME)) {
+  TaskManager.defineTask(SYNC_TASK_NAME, async () => {
+    try {
+      await runPostgresSync();
+      return BackgroundTask.BackgroundTaskResult.Success;
+    } catch {
+      return BackgroundTask.BackgroundTaskResult.Failed;
+    }
+  });
+}
+
+/**
+ * Registers OS-level background task execution for periodic sync.
+ */
+export async function registerBackgroundSync(): Promise<void> {
+  try {
+    const isRegistered = await TaskManager.isTaskRegisteredAsync(SYNC_TASK_NAME);
+    if (!isRegistered) {
+      await BackgroundTask.registerTaskAsync(SYNC_TASK_NAME, {
+        minimumInterval: 2 * 60 * 60, // 2 hours
+      });
+    }
+  } catch (err) {
+    console.warn("Failed to register background sync task:", err);
+  }
+}
+
+/**
+ * Unregisters OS-level background sync task.
+ */
+export async function unregisterBackgroundSync(): Promise<void> {
+  try {
+    const isRegistered = await TaskManager.isTaskRegisteredAsync(SYNC_TASK_NAME);
+    if (isRegistered) {
+      await BackgroundTask.unregisterTaskAsync(SYNC_TASK_NAME);
+    }
+  } catch (err) {
+    console.warn("Failed to unregister background sync task:", err);
+  }
+}
+
+/**
+ * Compatibility wrapper to persist sync server config and register/unregister OS background sync.
+ */
+export async function saveSyncServerConfig(url: string, autoSync = true): Promise<void> {
+  await saveSyncConfig(url, autoSync);
+  if (autoSync) {
+    await registerBackgroundSync();
+  } else {
+    await unregisterBackgroundSync();
+  }
+}
+
+export async function getSyncServerConfig(): Promise<string | null> {
+  const conf = await getSyncConfig();
+  return conf.url;
+}
+
+export async function deleteSyncServerConfig(): Promise<void> {
+  await disconnectSync();
+  await unregisterBackgroundSync();
+}
+
+export async function testSyncServerConnection(url: string) {
+  return await testSyncConnection(url);
+}
+
