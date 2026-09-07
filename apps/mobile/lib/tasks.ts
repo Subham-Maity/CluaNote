@@ -1,6 +1,7 @@
 import { eq, and, desc, asc, sql } from "drizzle-orm";
 import { tasks as tasksTable } from "./schema";
 import { getDb } from "./db";
+import { scheduleTaskAlarm, cancelTaskAlarm } from "./alarm";
 import type { Task, NewTask, UpdateTaskInput, SyncTask } from "@cluanote/shared";
 
 /**
@@ -163,12 +164,36 @@ export async function getFutureNotes(): Promise<Task[]> {
  */
 export async function pushNoteToEvent(id: number): Promise<void> {
   const db = await getDb();
+  const [existing] = await db
+    .select()
+    .from(tasksTable)
+    .where(eq(tasksTable.id, id))
+    .limit(1);
+
+  if (!existing) return;
+
+  let notifId: string | null = null;
+  if (existing.time) {
+    notifId = await scheduleTaskAlarm({
+      id: existing.id,
+      uuid: existing.uuid,
+      title: existing.title,
+      note: existing.note,
+      date: existing.date,
+      time: existing.time,
+      completed: 0,
+      is_future_note: 0,
+      is_deleted: 0,
+    });
+  }
+
   const nowIso = new Date().toISOString();
   await db
     .update(tasksTable)
     .set({
       is_future_note: 0,
       completed: 0,
+      notification_id: notifId,
       updated_at: nowIso,
     })
     .where(eq(tasksTable.id, id));
@@ -184,22 +209,50 @@ export async function addTask(task: NewTask): Promise<void> {
   }
 
   const db = await getDb();
-  const uuid = task.uuid || (typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID() : `task-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`);
+  const uuid =
+    task.uuid ||
+    (typeof crypto !== "undefined" && crypto.randomUUID
+      ? crypto.randomUUID()
+      : `task-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`);
   const nowIso = new Date().toISOString();
 
-  await db.insert(tasksTable).values({
-    uuid,
-    title,
-    note: task.note ? task.note.trim() : null,
-    date: task.date,
-    time: task.time || null,
-    priority: task.priority || "medium",
-    completed: 0,
-    created_at: nowIso,
-    updated_at: nowIso,
-    is_deleted: 0,
-    is_future_note: task.is_future_note ?? 0,
-  });
+  const [inserted] = await db
+    .insert(tasksTable)
+    .values({
+      uuid,
+      title,
+      note: task.note ? task.note.trim() : null,
+      date: task.date,
+      time: task.time || null,
+      priority: task.priority || "medium",
+      completed: 0,
+      created_at: nowIso,
+      updated_at: nowIso,
+      is_deleted: 0,
+      is_future_note: task.is_future_note ?? 0,
+    })
+    .returning({ id: tasksTable.id });
+
+  if (inserted?.id && task.time && (task.is_future_note ?? 0) === 0) {
+    const notifId = await scheduleTaskAlarm({
+      id: inserted.id,
+      uuid,
+      title,
+      note: task.note ? task.note.trim() : null,
+      date: task.date,
+      time: task.time || null,
+      completed: 0,
+      is_future_note: task.is_future_note ?? 0,
+      is_deleted: 0,
+    });
+
+    if (notifId) {
+      await db
+        .update(tasksTable)
+        .set({ notification_id: notifId })
+        .where(eq(tasksTable.id, inserted.id));
+    }
+  }
 }
 
 /**
@@ -210,8 +263,15 @@ export async function updateTask(
   changes: UpdateTaskInput
 ): Promise<void> {
   const db = await getDb();
-  const nowIso = new Date().toISOString();
+  const [existing] = await db
+    .select()
+    .from(tasksTable)
+    .where(eq(tasksTable.id, id))
+    .limit(1);
 
+  if (!existing) return;
+
+  const nowIso = new Date().toISOString();
   const updateData: Record<string, unknown> = {
     updated_at: nowIso,
   };
@@ -231,6 +291,52 @@ export async function updateTask(
   if (changes.is_deleted !== undefined) updateData.is_deleted = changes.is_deleted;
   if (changes.is_future_note !== undefined) updateData.is_future_note = changes.is_future_note;
 
+  // Handle alarm rescheduling if time/date/status changed
+  const effectiveDate = changes.date !== undefined ? changes.date : existing.date;
+  const effectiveTime = changes.time !== undefined ? changes.time || null : existing.time;
+  const effectiveCompleted = changes.completed !== undefined ? changes.completed : existing.completed;
+  const effectiveFuture = changes.is_future_note !== undefined ? changes.is_future_note : existing.is_future_note;
+  const effectiveDeleted = changes.is_deleted !== undefined ? changes.is_deleted : existing.is_deleted;
+
+  const timeOrDateChanged =
+    changes.time !== undefined || changes.date !== undefined;
+  const statusChanged =
+    changes.completed !== undefined ||
+    changes.is_deleted !== undefined ||
+    changes.is_future_note !== undefined;
+
+  if (timeOrDateChanged || statusChanged) {
+    if (existing.notification_id) {
+      await cancelTaskAlarm(existing.notification_id);
+      updateData.notification_id = null;
+    }
+
+    if (
+      effectiveCompleted === 0 &&
+      effectiveFuture === 0 &&
+      effectiveDeleted === 0 &&
+      effectiveTime
+    ) {
+      const notifId = await scheduleTaskAlarm({
+        id: existing.id,
+        uuid: existing.uuid,
+        title: changes.title !== undefined ? changes.title.trim() : existing.title,
+        note:
+          changes.note !== undefined
+            ? changes.note
+              ? changes.note.trim()
+              : null
+            : existing.note,
+        date: effectiveDate,
+        time: effectiveTime,
+        completed: 0,
+        is_future_note: 0,
+        is_deleted: 0,
+      });
+      updateData.notification_id = notifId;
+    }
+  }
+
   await db.update(tasksTable).set(updateData).where(eq(tasksTable.id, id));
 }
 
@@ -239,10 +345,20 @@ export async function updateTask(
  */
 export async function deleteTask(id: number): Promise<void> {
   const db = await getDb();
+  const [existing] = await db
+    .select({ notification_id: tasksTable.notification_id })
+    .from(tasksTable)
+    .where(eq(tasksTable.id, id))
+    .limit(1);
+
+  if (existing?.notification_id) {
+    await cancelTaskAlarm(existing.notification_id);
+  }
+
   const nowIso = new Date().toISOString();
   await db
     .update(tasksTable)
-    .set({ is_deleted: 1, updated_at: nowIso })
+    .set({ is_deleted: 1, notification_id: null, updated_at: nowIso })
     .where(eq(tasksTable.id, id));
 }
 
@@ -254,11 +370,43 @@ export async function toggleComplete(
   completed: boolean
 ): Promise<void> {
   const db = await getDb();
+  const [existing] = await db
+    .select()
+    .from(tasksTable)
+    .where(eq(tasksTable.id, id))
+    .limit(1);
+
+  if (!existing) return;
+
   const nowIso = new Date().toISOString();
-  await db
-    .update(tasksTable)
-    .set({ completed: completed ? 1 : 0, updated_at: nowIso })
-    .where(eq(tasksTable.id, id));
+  if (completed) {
+    if (existing.notification_id) {
+      await cancelTaskAlarm(existing.notification_id);
+    }
+    await db
+      .update(tasksTable)
+      .set({ completed: 1, notification_id: null, updated_at: nowIso })
+      .where(eq(tasksTable.id, id));
+  } else {
+    let notifId: string | null = null;
+    if (existing.time && existing.is_future_note === 0 && existing.is_deleted === 0) {
+      notifId = await scheduleTaskAlarm({
+        id: existing.id,
+        uuid: existing.uuid,
+        title: existing.title,
+        note: existing.note,
+        date: existing.date,
+        time: existing.time,
+        completed: 0,
+        is_future_note: 0,
+        is_deleted: 0,
+      });
+    }
+    await db
+      .update(tasksTable)
+      .set({ completed: 0, notification_id: notifId, updated_at: nowIso })
+      .where(eq(tasksTable.id, id));
+  }
 }
 
 /**
@@ -272,11 +420,43 @@ export async function setTaskStatus(
   status: number
 ): Promise<void> {
   const db = await getDb();
+  const [existing] = await db
+    .select()
+    .from(tasksTable)
+    .where(eq(tasksTable.id, id))
+    .limit(1);
+
+  if (!existing) return;
+
   const nowIso = new Date().toISOString();
-  await db
-    .update(tasksTable)
-    .set({ completed: status, updated_at: nowIso })
-    .where(eq(tasksTable.id, id));
+  if (status !== 0) {
+    if (existing.notification_id) {
+      await cancelTaskAlarm(existing.notification_id);
+    }
+    await db
+      .update(tasksTable)
+      .set({ completed: status, notification_id: null, updated_at: nowIso })
+      .where(eq(tasksTable.id, id));
+  } else {
+    let notifId: string | null = null;
+    if (existing.time && existing.is_future_note === 0 && existing.is_deleted === 0) {
+      notifId = await scheduleTaskAlarm({
+        id: existing.id,
+        uuid: existing.uuid,
+        title: existing.title,
+        note: existing.note,
+        date: existing.date,
+        time: existing.time,
+        completed: 0,
+        is_future_note: 0,
+        is_deleted: 0,
+      });
+    }
+    await db
+      .update(tasksTable)
+      .set({ completed: 0, notification_id: notifId, updated_at: nowIso })
+      .where(eq(tasksTable.id, id));
+  }
 }
 
 /**
