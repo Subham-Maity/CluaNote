@@ -18,7 +18,7 @@ export function registerVersionGetter(getter: VersionGetter): void {
   customVersionGetter = getter;
 }
 
-/** Reads the real app version from registered getter or Tauri at runtime — falls back to CURRENT_VERSION */
+/** Reads the real app version from registered getter or falls back to CURRENT_VERSION */
 export async function getCurrentVersion(): Promise<string> {
   if (customVersionGetter) {
     try {
@@ -28,16 +28,7 @@ export async function getCurrentVersion(): Promise<string> {
       // fallback
     }
   }
-
-  try {
-    // @ts-ignore
-    const { getVersion } = await import("@tauri-apps/api/app");
-    const v = await getVersion();
-    return v || CURRENT_VERSION;
-  } catch {
-    // Fallback for browser/dev/RN context outside Tauri
-    return CURRENT_VERSION;
-  }
+  return CURRENT_VERSION;
 }
 
 export interface GitHubRelease {
