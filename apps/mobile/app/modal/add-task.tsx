@@ -19,6 +19,7 @@ export default function AddTaskModal() {
   const params = useLocalSearchParams<{
     taskId?: string;
     initialDate?: string;
+    is_future_note?: string;
   }>();
 
   const isEditing = Boolean(params.taskId);
@@ -30,7 +31,9 @@ export default function AddTaskModal() {
   const [isAnytime, setIsAnytime] = useState(true);
   const [time, setTime] = useState("");
   const [priority, setPriority] = useState<TaskPriority>("medium");
-  const [isFutureNote, setIsFutureNote] = useState(false);
+  const [isFutureNote, setIsFutureNote] = useState(
+    () => params.is_future_note === "1" || params.is_future_note === "true"
+  );
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 

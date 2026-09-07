@@ -1,11 +1,24 @@
-import { useState, useEffect, useCallback } from "react";
-import { View, Text, FlatList, TouchableOpacity, RefreshControl } from "react-native";
+import React, { useState, useCallback } from "react";
+import { View, Text, TouchableOpacity, Alert } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { useRouter, useFocusEffect } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
-import { getFutureNotes, pushNoteToEvent } from "../../lib/tasks";
+import {
+  getFutureNotes,
+  pushNoteToEvent,
+  updateTask,
+  deleteTask,
+} from "../../lib/tasks";
+import {
+  KanbanBoard,
+  kanbanStatusToCompleted,
+} from "../../components/KanbanBoard";
+import { KanbanStatus } from "../../components/KanbanCard";
+import { FloatingActionButton } from "../../components/FloatingActionButton";
 import type { Task } from "@cluanote/shared";
 
 export default function KanbanScreen() {
+  const router = useRouter();
   const [notes, setNotes] = useState<Task[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -21,75 +34,127 @@ export default function KanbanScreen() {
     }
   }, []);
 
-  useEffect(() => {
-    loadNotes();
-  }, [loadNotes]);
+  useFocusEffect(
+    useCallback(() => {
+      loadNotes();
+    }, [loadNotes])
+  );
 
-  const handlePromote = async (id: number) => {
+  const handleCardPress = (task: Task) => {
+    router.push({
+      pathname: "/modal/note",
+      params: {
+        taskId: String(task.id),
+        title: task.title,
+        initialNote: task.note || "",
+      },
+    });
+  };
+
+  const handleMoveStatus = async (task: Task, target: KanbanStatus) => {
+    const nextCompleted = kanbanStatusToCompleted(target);
+    // Optimistic update
+    setNotes((prev) =>
+      prev.map((n) => (n.id === task.id ? { ...n, completed: nextCompleted } : n))
+    );
+
     try {
-      await pushNoteToEvent(id);
+      await updateTask(task.id, { completed: nextCompleted });
       await loadNotes();
     } catch (err) {
-      console.error("Failed to promote note:", err);
+      console.error("Failed to move note kanban status:", err);
+      await loadNotes();
     }
   };
 
-  return (
-    <SafeAreaView className="flex-1 bg-[#090d16] px-4 pt-2">
-      <View className="flex-row items-center justify-between mb-4">
-        <View>
-          <Text className="text-2xl font-bold text-white tracking-tight">
-            Kanban Notes
-          </Text>
-          <Text className="text-xs text-slate-400 mt-0.5">
-            Future planning ideas & thoughts
-          </Text>
-        </View>
-      </View>
+  const handlePushToEvent = async (task: Task) => {
+    // Optimistic removal from future notes
+    setNotes((prev) => prev.filter((n) => n.id !== task.id));
 
-      <FlatList
-        data={notes}
-        keyExtractor={(item) => item.uuid || String(item.id)}
-        refreshControl={
-          <RefreshControl
-            refreshing={isLoading}
-            onRefresh={loadNotes}
-            tintColor="#818cf8"
-          />
-        }
-        contentContainerStyle={{ paddingBottom: 80 }}
-        ListEmptyComponent={
-          <View className="items-center justify-center py-20">
-            <Ionicons name="bulb-outline" size={32} color="#64748b" />
-            <Text className="text-slate-400 text-xs mt-2 text-center">
-              No future notes yet. Save thoughts here to plan ahead!
+    try {
+      await pushNoteToEvent(task.id);
+      // Navigate to Today tab with this note's target date
+      router.navigate({
+        pathname: "/",
+        params: { date: task.date },
+      });
+    } catch (err) {
+      console.error("Failed to push note to event:", err);
+      await loadNotes();
+    }
+  };
+
+  const handleDelete = (task: Task) => {
+    Alert.alert(
+      "Delete Future Note",
+      `Are you sure you want to delete "${task.title}"?`,
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: async () => {
+            setNotes((prev) => prev.filter((n) => n.id !== task.id));
+            try {
+              await deleteTask(task.id);
+              await loadNotes();
+            } catch (err) {
+              console.error("Failed to delete note:", err);
+              await loadNotes();
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  const handleCreateFutureNote = () => {
+    router.push({
+      pathname: "/modal/add-task",
+      params: { is_future_note: "1" },
+    });
+  };
+
+  return (
+    <SafeAreaView className="flex-1 bg-[#090d16] pt-2" edges={["top"]}>
+      {/* Header */}
+      <View className="px-4 flex-row items-center justify-between mb-3">
+        <View className="flex-row items-center space-x-2">
+          <View className="w-8 h-8 rounded-xl bg-amber-600/20 border border-amber-500/30 items-center justify-center">
+            <Ionicons name="grid-outline" size={18} color="#fbbf24" />
+          </View>
+          <View>
+            <Text className="text-2xl font-black text-white tracking-tight">
+              Kanban
+            </Text>
+            <Text className="text-[11px] text-slate-400">
+              Future planning notes & roadmap
             </Text>
           </View>
-        }
-        renderItem={({ item }) => (
-          <View className="mb-2.5 p-3.5 rounded-xl bg-white/[0.04] border border-white/[0.08]">
-            <Text className="text-white text-sm font-semibold">{item.title}</Text>
-            {item.note ? (
-              <Text className="text-slate-300 text-xs mt-1">{item.note}</Text>
-            ) : null}
+        </View>
 
-            <View className="flex-row items-center justify-between mt-3 pt-2.5 border-t border-white/[0.06]">
-              <Text className="text-slate-500 text-[10px]">
-                Target: {item.date}
-              </Text>
-              <TouchableOpacity
-                onPress={() => handlePromote(item.id)}
-                className="px-2 py-1 rounded-md bg-indigo-500/20 border border-indigo-500/30 flex-row items-center space-x-1"
-              >
-                <Ionicons name="arrow-forward" size={12} color="#818cf8" />
-                <Text className="text-indigo-300 text-[10px] font-bold">
-                  Push to Day
-                </Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        )}
+        <TouchableOpacity
+          onPress={handleCreateFutureNote}
+          className="px-3 py-1.5 rounded-xl bg-amber-600 active:bg-amber-700 flex-row items-center space-x-1 shadow-md shadow-amber-600/20"
+        >
+          <Ionicons name="add" size={16} color="white" />
+          <Text className="text-white text-xs font-bold">New Note</Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* Kanban Board */}
+      <KanbanBoard
+        tasks={notes}
+        isLoading={isLoading}
+        onRefresh={loadNotes}
+        onCardPress={handleCardPress}
+        onPushToEvent={handlePushToEvent}
+        onMoveStatus={handleMoveStatus}
+        onDelete={handleDelete}
       />
+
+      {/* Floating Action Button */}
+      <FloatingActionButton onPress={handleCreateFutureNote} />
     </SafeAreaView>
   );
 }
