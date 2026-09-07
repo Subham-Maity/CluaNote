@@ -20,7 +20,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { checkMobileUpdate } from "../../lib/updater";
 import * as DocumentPicker from "expo-document-picker";
 import * as FileSystem from "expo-file-system/legacy";
-import { Audio } from "expo-av";
+import { createAudioPlayer, type AudioPlayer } from "expo-audio";
 import { format, parseISO } from "date-fns";
 import { CURRENT_VERSION, GITHUB_REPO } from "@cluanote/shared";
 import {
@@ -53,8 +53,8 @@ export default function SettingsScreen() {
   const [alarmActive, setAlarmActive] = useState(true);
   const [customSoundUri, setSoundUriState] = useState<string | null>(null);
   const [soundFileName, setSoundFileName] = useState<string>("Default Chime");
-  const [isPlayingPreview, setIsPlayingPreview] = useState(false);
-  const [previewSound, setPreviewSound] = useState<Audio.Sound | null>(null);
+  const [isPlayingPreview, setIsPlayingPreview] = useState<boolean>(false);
+  const [previewPlayer, setPreviewPlayer] = useState<AudioPlayer | null>(null);
   const [hasPermission, setHasPermission] = useState<boolean | null>(null);
   const [isRescheduling, setIsRescheduling] = useState(false);
 
@@ -159,12 +159,14 @@ export default function SettingsScreen() {
   // Stop preview sound on unmount
   useEffect(() => {
     return () => {
-      if (previewSound) {
-        previewSound.stopAsync().catch(() => {});
-        previewSound.unloadAsync().catch(() => {});
+      if (previewPlayer) {
+        try {
+          previewPlayer.pause();
+          previewPlayer.release();
+        } catch {}
       }
     };
-  }, [previewSound]);
+  }, [previewPlayer]);
 
   // --------------------------------------------------------------------------
   // Alarm Handlers
@@ -221,10 +223,12 @@ export default function SettingsScreen() {
   const handleToggleSoundPreview = async () => {
     try {
       if (isPlayingPreview) {
-        if (previewSound) {
-          await previewSound.stopAsync();
-          await previewSound.unloadAsync();
-          setPreviewSound(null);
+        if (previewPlayer) {
+          try {
+            previewPlayer.pause();
+            previewPlayer.release();
+          } catch {}
+          setPreviewPlayer(null);
         }
         setIsPlayingPreview(false);
         return;
@@ -235,22 +239,23 @@ export default function SettingsScreen() {
         return;
       }
 
-      const { sound } = await Audio.Sound.createAsync(
-        { uri: customSoundUri },
-        { volume: 1.0 }
-      );
-      setPreviewSound(sound);
+      const player = createAudioPlayer({ uri: customSoundUri });
+      player.volume = 1.0;
+      player.loop = false;
+      setPreviewPlayer(player);
       setIsPlayingPreview(true);
 
-      sound.setOnPlaybackStatusUpdate((status) => {
-        if (status.isLoaded && status.didJustFinish) {
+      player.addListener("playbackStatusUpdate", (status) => {
+        if (status.didJustFinish) {
           setIsPlayingPreview(false);
-          sound.unloadAsync().catch(() => {});
-          setPreviewSound(null);
+          try {
+            player.release();
+          } catch {}
+          setPreviewPlayer(null);
         }
       });
 
-      await sound.playAsync();
+      player.play();
     } catch (err) {
       console.warn("Failed to preview sound:", err);
       setIsPlayingPreview(false);
@@ -258,10 +263,12 @@ export default function SettingsScreen() {
   };
 
   const handleResetSound = async () => {
-    if (previewSound) {
-      await previewSound.stopAsync().catch(() => {});
-      await previewSound.unloadAsync().catch(() => {});
-      setPreviewSound(null);
+    if (previewPlayer) {
+      try {
+        previewPlayer.pause();
+        previewPlayer.release();
+      } catch {}
+      setPreviewPlayer(null);
       setIsPlayingPreview(false);
     }
     await setCustomSoundUri(null);

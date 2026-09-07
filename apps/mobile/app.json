@@ -39,6 +39,13 @@
           "color": "#4f46e5"
         }
       ],
+      [
+        "expo-audio",
+        {
+          "recordAudioAndroid": false,
+          "enableBackgroundPlayback": true
+        }
+      ],
       "expo-font",
       "expo-sqlite"
     ],

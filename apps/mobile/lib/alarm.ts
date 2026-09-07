@@ -1,7 +1,7 @@
 import * as Notifications from "expo-notifications";
 import { Platform } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { Audio } from "expo-av";
+import { createAudioPlayer, type AudioPlayer } from "expo-audio";
 import { eq } from "drizzle-orm";
 import { getDb } from "./db";
 import { tasks as tasksTable } from "./schema";
@@ -11,7 +11,7 @@ export const ALARM_ENABLED_KEY = "cluanote_alarm_enabled";
 export const CUSTOM_SOUND_KEY = "cluanote_custom_sound_uri";
 export const NOTIFICATION_CHANNEL_ID = "cluanote-alarms";
 
-let alarmSound: Audio.Sound | null = null;
+let alarmPlayer: AudioPlayer | null = null;
 
 /**
  * Requests system notification permissions and configures the Android notification channel.
@@ -100,12 +100,10 @@ export async function playAlarmSound(): Promise<void> {
     await stopAlarmSound();
     const customUri = await getCustomSoundUri();
     if (customUri) {
-      const { sound } = await Audio.Sound.createAsync(
-        { uri: customUri },
-        { isLooping: true, volume: 1.0 }
-      );
-      alarmSound = sound;
-      await alarmSound.playAsync();
+      alarmPlayer = createAudioPlayer({ uri: customUri });
+      alarmPlayer.loop = true;
+      alarmPlayer.volume = 1.0;
+      alarmPlayer.play();
     }
   } catch (err) {
     console.warn("Failed to play alarm sound:", err);
@@ -117,10 +115,10 @@ export async function playAlarmSound(): Promise<void> {
  */
 export async function stopAlarmSound(): Promise<void> {
   try {
-    if (alarmSound) {
-      await alarmSound.stopAsync();
-      await alarmSound.unloadAsync();
-      alarmSound = null;
+    if (alarmPlayer) {
+      alarmPlayer.pause();
+      alarmPlayer.release();
+      alarmPlayer = null;
     }
   } catch (err) {
     console.warn("Failed to stop alarm sound:", err);
