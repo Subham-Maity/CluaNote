@@ -1,5 +1,10 @@
 # Build stage
-FROM rust:1.80-bookworm AS builder
+FROM rust:bookworm AS builder
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    pkg-config \
+    libssl-dev \
+    && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /usr/src/cluanote-sync-server
 COPY Cargo.toml Cargo.lock* ./
