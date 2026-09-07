@@ -19,6 +19,7 @@ node_modules
 dist
 dist-ssr
 *.local
+.turbo
 
 # Tauri & Rust build artifacts
 src-tauri/target/

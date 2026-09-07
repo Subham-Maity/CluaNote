@@ -38,10 +38,15 @@ import {
   setAlarmTriggerListener,
 } from "./lib/alarm";
 import { sendTaskNotification } from "./lib/notifications";
-import { checkForUpdate } from "./lib/updater";
 import { startBackgroundAutoSync } from "./lib/postgres";
-import type { Task, NewTask } from "./types/task";
-import type { UpdateCheckResult } from "./lib/updater";
+import {
+  checkForUpdate,
+  filterAnytimeTasks,
+  filterTimedTasks,
+  type Task,
+  type NewTask,
+  type UpdateCheckResult,
+} from "@cluanote/shared";
 
 export function App() {
   const [selectedDate, setSelectedDate] = useState<string>(() =>
@@ -352,8 +357,8 @@ export function App() {
   };
 
   // Filter tasks into anytime vs timed
-  const anytimeTasks = tasks.filter((t) => !t.time || t.time.trim() === "");
-  const timedTasks = tasks.filter((t) => t.time && t.time.trim() !== "");
+  const anytimeTasks = filterAnytimeTasks(tasks);
+  const timedTasks = filterTimedTasks(tasks);
 
   return (
     <div className="relative w-full h-full flex flex-col overflow-hidden text-white select-none">

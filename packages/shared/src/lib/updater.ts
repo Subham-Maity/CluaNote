@@ -1,20 +1,41 @@
 /**
  * updater.ts
  * Checks GitHub Releases API for new versions and fetches release history.
- * Uses session-level caching to avoid redundant network calls.
+ * Works across desktop and mobile.
  */
 
-const GITHUB_REPO = "Subham-Maity/CluaNote";
-export const CURRENT_VERSION = "0.4.2"; // Keep in sync with tauri.conf.json / package.json
+import { GITHUB_REPO, CURRENT_VERSION } from "../constants";
+import { parseVersion, isNewerVersion } from "./taskLogic";
 
-/** Reads the real app version from Tauri at runtime — falls back to CURRENT_VERSION */
+export { parseVersion, isNewerVersion };
+
+export type VersionGetter = () => Promise<string> | string;
+
+let customVersionGetter: VersionGetter | null = null;
+
+/** Register a platform-specific version getter (e.g. for Tauri or Expo Application) */
+export function registerVersionGetter(getter: VersionGetter): void {
+  customVersionGetter = getter;
+}
+
+/** Reads the real app version from registered getter or Tauri at runtime — falls back to CURRENT_VERSION */
 export async function getCurrentVersion(): Promise<string> {
+  if (customVersionGetter) {
+    try {
+      const v = await customVersionGetter();
+      if (v) return v;
+    } catch {
+      // fallback
+    }
+  }
+
   try {
+    // @ts-ignore
     const { getVersion } = await import("@tauri-apps/api/app");
     const v = await getVersion();
     return v || CURRENT_VERSION;
   } catch {
-    // Fallback for browser/dev context outside Tauri
+    // Fallback for browser/dev/RN context outside Tauri
     return CURRENT_VERSION;
   }
 }
@@ -54,34 +75,15 @@ export interface UpdateCheckResult {
   directDownloadName?: string;
 }
 
-/**
- * Parses a semver-like version string into an array of numbers.
- * Strips leading "v" if present (e.g., "v0.3.0" → [0, 3, 0]).
- */
-function parseVersion(v: string): number[] {
-  return v
-    .replace(/^v/, "")
-    .split(".")
-    .map((n) => parseInt(n, 10) || 0);
-}
-
-/**
- * Returns true if `a` is strictly greater than `b` (semver comparison).
- */
-function isNewerVersion(a: string, b: string): boolean {
-  const av = parseVersion(a);
-  const bv = parseVersion(b);
-  for (let i = 0; i < Math.max(av.length, bv.length); i++) {
-    const ai = av[i] ?? 0;
-    const bi = bv[i] ?? 0;
-    if (ai > bi) return true;
-    if (ai < bi) return false;
-  }
-  return false;
-}
-
 const SESSION_CACHE_KEY = "cluanote_update_check";
 const RELEASES_CACHE_KEY = "cluanote_all_releases";
+
+function getStorage(): Storage | null {
+  if (typeof window !== "undefined" && window.sessionStorage) {
+    return window.sessionStorage;
+  }
+  return null;
+}
 
 /**
  * Checks for a newer release on GitHub.
@@ -90,13 +92,13 @@ const RELEASES_CACHE_KEY = "cluanote_all_releases";
 export async function checkForUpdate(force = false): Promise<UpdateCheckResult> {
   const runtimeVersion = await getCurrentVersion();
   const currentVer = runtimeVersion && runtimeVersion !== "0.0.0" ? runtimeVersion : CURRENT_VERSION;
+  const storage = getStorage();
 
   try {
-    if (!force) {
-      const cached = sessionStorage.getItem(SESSION_CACHE_KEY);
+    if (!force && storage) {
+      const cached = storage.getItem(SESSION_CACHE_KEY);
       if (cached) {
         const parsed = JSON.parse(cached) as UpdateCheckResult;
-        // If the cached result was from a previous version session, discard it
         if (parsed.currentVersion === currentVer) {
           return parsed;
         }
@@ -119,19 +121,18 @@ export async function checkForUpdate(force = false): Promise<UpdateCheckResult> 
     const latestVersion = release.tag_name;
     const hasUpdate = isNewerVersion(latestVersion, currentVer);
 
-    // Try to find a direct installer asset (e.g. .exe / .msi for Windows, .dmg for macOS, .AppImage for Linux)
     const assets: ReleaseAsset[] = (release.assets || []).map((a) => ({
       name: a.name,
       browser_download_url: a.browser_download_url,
       size: a.size,
     }));
 
-    // Detect best match: Windows .exe installer first, then .msi, etc.
     const directAsset =
       assets.find((a) => a.name.endsWith(".exe") || a.name.endsWith("-setup.exe")) ||
       assets.find((a) => a.name.endsWith(".msi")) ||
       assets.find((a) => a.name.endsWith(".dmg")) ||
       assets.find((a) => a.name.endsWith(".AppImage") || a.name.endsWith(".deb")) ||
+      assets.find((a) => a.name.endsWith(".apk")) ||
       assets[0];
 
     const result: UpdateCheckResult = {
@@ -147,7 +148,9 @@ export async function checkForUpdate(force = false): Promise<UpdateCheckResult> 
       directDownloadName: directAsset?.name,
     };
 
-    sessionStorage.setItem(SESSION_CACHE_KEY, JSON.stringify(result));
+    if (storage) {
+      storage.setItem(SESSION_CACHE_KEY, JSON.stringify(result));
+    }
     return result;
   } catch (err) {
     console.warn("Update check failed (offline or rate-limited?):", err);
@@ -166,13 +169,16 @@ export async function checkForUpdate(force = false): Promise<UpdateCheckResult> 
 
 /**
  * Fetches all releases from the GitHub API for the changelog/release-notes modal.
- * Caches result in sessionStorage.
+ * Caches result in sessionStorage if available.
  */
 export async function fetchAllReleases(): Promise<GitHubRelease[]> {
+  const storage = getStorage();
   try {
-    const cached = sessionStorage.getItem(RELEASES_CACHE_KEY);
-    if (cached) {
-      return JSON.parse(cached) as GitHubRelease[];
+    if (storage) {
+      const cached = storage.getItem(RELEASES_CACHE_KEY);
+      if (cached) {
+        return JSON.parse(cached) as GitHubRelease[];
+      }
     }
 
     const response = await fetch(
@@ -188,9 +194,10 @@ export async function fetchAllReleases(): Promise<GitHubRelease[]> {
     }
 
     const releases: GitHubRelease[] = await response.json();
-    // Filter out drafts
     const published = releases.filter((r) => !r.draft);
-    sessionStorage.setItem(RELEASES_CACHE_KEY, JSON.stringify(published));
+    if (storage) {
+      storage.setItem(RELEASES_CACHE_KEY, JSON.stringify(published));
+    }
     return published;
   } catch (err) {
     console.warn("Failed to fetch releases:", err);
