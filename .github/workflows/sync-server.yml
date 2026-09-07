@@ -6,9 +6,6 @@ on:
       - 'v*'
     branches:
       - main
-    paths:
-      - 'packages/rust-sync-server/**'
-      - '.github/workflows/sync-server.yml'
   pull_request:
     paths:
       - 'packages/rust-sync-server/**'

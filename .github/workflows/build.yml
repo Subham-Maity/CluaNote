@@ -106,6 +106,8 @@ jobs:
             | **macOS (Intel)** | `cluanote_*_x64.dmg` | Intel-based Macs |
             | **Linux** | `cluanote_*_amd64.AppImage` | Universal standalone Linux bundle |
             | **Linux** | `cluanote_*_amd64.deb` | Debian / Ubuntu package |
+            | **Android** | `cluanote-mobile.apk` | Standalone Android APK (Phones & Tablets) |
+            | **Sync Server** | `cluanote-sync-server-*` | Headless sync daemon (Linux / macOS / Windows) |
 
             ### Requirements
             - **Windows:** WebView2 Runtime (included in Windows 10 & 11)
