@@ -1,0 +1,116 @@
+name: Sync Server CI/CD
+
+on:
+  push:
+    tags:
+      - 'v*'
+    branches:
+      - main
+    paths:
+      - 'packages/rust-sync-server/**'
+      - '.github/workflows/sync-server.yml'
+  pull_request:
+    paths:
+      - 'packages/rust-sync-server/**'
+      - '.github/workflows/sync-server.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  packages: write
+
+jobs:
+  build-binaries:
+    name: Build Binary (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            artifact_name: cluanote-sync-server-windows.exe
+            binary_path: packages/rust-sync-server/target/release/cluanote-sync-server.exe
+          - os: macos-latest
+            artifact_name: cluanote-sync-server-macos
+            binary_path: packages/rust-sync-server/target/release/cluanote-sync-server
+          - os: ubuntu-latest
+            artifact_name: cluanote-sync-server-linux
+            binary_path: packages/rust-sync-server/target/release/cluanote-sync-server
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install Linux dependencies
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y pkg-config libssl-dev
+
+      - name: Build Sync Server Release Binary
+        run: cargo build --release --manifest-path packages/rust-sync-server/Cargo.toml
+
+      - name: Prepare Binary for Artifact Upload
+        shell: bash
+        run: |
+          mkdir -p dist
+          cp "${{ matrix.binary_path }}" "dist/${{ matrix.artifact_name }}"
+
+      - name: Upload Binary Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact_name }}
+          path: dist/${{ matrix.artifact_name }}
+
+      - name: Attach Binary to GitHub Release
+        uses: softprops/action-gh-release@v2
+        if: startsWith(github.ref, 'refs/tags/')
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          files: dist/${{ matrix.artifact_name }}
+
+  docker:
+    name: Docker Build & Push (GHCR)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract Docker metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository_owner }}/cluanote-sync-server
+          tags: |
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=raw,value=latest,enable=${{ startsWith(github.ref, 'refs/tags/') }}
+
+      - name: Build Docker Image (Local verification)
+        run: |
+          docker build -t cluanote-sync-server packages/rust-sync-server
+
+      - name: Build and Push Docker Image to GHCR
+        uses: docker/build-push-action@v5
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          context: ./packages/rust-sync-server
+          file: ./packages/rust-sync-server/Dockerfile
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
