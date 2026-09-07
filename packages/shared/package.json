@@ -1,0 +1,40 @@
+{
+  "name": "@cluanote/shared",
+  "version": "0.4.2",
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "import": "./src/index.ts",
+      "default": "./src/index.ts"
+    },
+    "./types": {
+      "types": "./src/types/task.ts",
+      "import": "./src/types/task.ts"
+    },
+    "./lib/taskLogic": {
+      "types": "./src/lib/taskLogic.ts",
+      "import": "./src/lib/taskLogic.ts"
+    },
+    "./lib/syncProtocol": {
+      "types": "./src/lib/syncProtocol.ts",
+      "import": "./src/lib/syncProtocol.ts"
+    },
+    "./lib/updater": {
+      "types": "./src/lib/updater.ts",
+      "import": "./src/lib/updater.ts"
+    },
+    "./constants": {
+      "types": "./src/constants.ts",
+      "import": "./src/constants.ts"
+    }
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "typescript": "~5.8.3"
+  }
+}
