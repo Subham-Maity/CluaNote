@@ -1,29 +1,56 @@
-import { useState, useEffect, useCallback } from "react";
-import { View, Text, TouchableOpacity, FlatList, RefreshControl } from "react-native";
+import React, { useState, useCallback } from "react";
+import { View, Text, TouchableOpacity } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { useFocusEffect, useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
-import { getPendingTasks, getNotDoneTasks, getCompletedTasks } from "../../lib/tasks";
+import {
+  getPendingTasks,
+  getNotDoneTasks,
+  getCompletedTasks,
+  setTaskStatus,
+  toggleComplete,
+  deleteTask,
+} from "../../lib/tasks";
+import { HistoryList } from "../../components/HistoryList";
 import type { Task } from "@cluanote/shared";
 
 type TabSegment = "pending" | "not_done" | "completed";
 
 export default function HistoryScreen() {
+  const router = useRouter();
   const [segment, setSegment] = useState<TabSegment>("pending");
   const [tasks, setTasks] = useState<Task[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
+  // Counts for each segment
+  const [counts, setCounts] = useState({
+    pending: 0,
+    not_done: 0,
+    completed: 0,
+  });
+
   const loadData = useCallback(async () => {
     setIsLoading(true);
     try {
-      let data: Task[] = [];
+      const [pendingList, notDoneList, completedList] = await Promise.all([
+        getPendingTasks(),
+        getNotDoneTasks(),
+        getCompletedTasks(),
+      ]);
+
+      setCounts({
+        pending: pendingList.length,
+        not_done: notDoneList.length,
+        completed: completedList.length,
+      });
+
       if (segment === "pending") {
-        data = await getPendingTasks();
+        setTasks(pendingList);
       } else if (segment === "not_done") {
-        data = await getNotDoneTasks();
+        setTasks(notDoneList);
       } else {
-        data = await getCompletedTasks();
+        setTasks(completedList);
       }
-      setTasks(data);
     } catch (err) {
       console.error("Failed to load history tasks:", err);
     } finally {
@@ -31,88 +58,142 @@ export default function HistoryScreen() {
     }
   }, [segment]);
 
-  useEffect(() => {
-    loadData();
-  }, [loadData]);
+  useFocusEffect(
+    useCallback(() => {
+      loadData();
+    }, [loadData])
+  );
+
+  const handleToggleComplete = async (task: Task) => {
+    // Optimistic removal from current list if not in completed segment
+    const nextCompleted = task.completed === 1 ? 0 : 1;
+    if (segment !== "completed" && nextCompleted === 1) {
+      setTasks((prev) => prev.filter((t) => t.id !== task.id));
+    }
+    try {
+      await toggleComplete(task.id, nextCompleted === 1);
+      await loadData();
+    } catch (err) {
+      console.error("Failed to toggle task completion:", err);
+      await loadData();
+    }
+  };
+
+  const handleSetStatus = async (task: Task, status: number) => {
+    // Optimistic removal if status doesn't match current segment
+    const willStayInSegment =
+      (segment === "pending" && status === 0) ||
+      (segment === "not_done" && status === 2) ||
+      (segment === "completed" && status === 1);
+
+    if (!willStayInSegment) {
+      setTasks((prev) => prev.filter((t) => t.id !== task.id));
+    }
+
+    try {
+      await setTaskStatus(task.id, status);
+      await loadData();
+    } catch (err) {
+      console.error("Failed to set task status:", err);
+      await loadData();
+    }
+  };
+
+  const handleDelete = async (task: Task) => {
+    setTasks((prev) => prev.filter((t) => t.id !== task.id));
+    try {
+      await deleteTask(task.id);
+      await loadData();
+    } catch (err) {
+      console.error("Failed to delete task:", err);
+      await loadData();
+    }
+  };
+
+  const handleJumpToDate = (date: string) => {
+    router.navigate({
+      pathname: "/",
+      params: { date },
+    });
+  };
 
   return (
-    <SafeAreaView className="flex-1 bg-[#090d16] px-4 pt-2">
-      <Text className="text-2xl font-bold text-white tracking-tight mb-3">
-        History
-      </Text>
+    <SafeAreaView className="flex-1 bg-[#090d16] px-4 pt-2" edges={["top"]}>
+      {/* Header */}
+      <View className="flex-row items-center justify-between mb-3">
+        <View className="flex-row items-center space-x-2">
+          <View className="w-8 h-8 rounded-xl bg-violet-600/20 border border-violet-500/30 items-center justify-center">
+            <Ionicons name="time-outline" size={18} color="#a78bfa" />
+          </View>
+          <Text className="text-2xl font-black text-white tracking-tight">
+            History
+          </Text>
+        </View>
 
-      {/* 3-Segment selector */}
-      <View className="flex-row p-1 rounded-xl bg-white/[0.04] border border-white/[0.08] mb-4">
-        {(["pending", "not_done", "completed"] as const).map((s) => (
-          <TouchableOpacity
-            key={s}
-            onPress={() => setSegment(s)}
-            className={`flex-1 py-1.5 rounded-lg items-center justify-center ${
-              segment === s ? "bg-indigo-600 shadow-md" : ""
-            }`}
-          >
-            <Text
-              className={`text-xs font-semibold capitalize ${
-                segment === s ? "text-white" : "text-slate-400"
-              }`}
-            >
-              {s.replace("_", " ")}
-            </Text>
-          </TouchableOpacity>
-        ))}
+        <TouchableOpacity
+          onPress={loadData}
+          className="p-2 rounded-xl bg-white/[0.04] border border-white/[0.08]"
+          accessibilityLabel="Refresh history"
+        >
+          <Ionicons name="reload-outline" size={16} color="#94a3b8" />
+        </TouchableOpacity>
       </View>
 
-      {/* Task List */}
-      <FlatList
-        data={tasks}
-        keyExtractor={(item) => item.uuid || String(item.id)}
-        refreshControl={
-          <RefreshControl
-            refreshing={isLoading}
-            onRefresh={loadData}
-            tintColor="#818cf8"
-          />
-        }
-        contentContainerStyle={{ paddingBottom: 80 }}
-        ListEmptyComponent={
-          <View className="items-center justify-center py-20">
-            <Ionicons name="folder-open-outline" size={32} color="#64748b" />
-            <Text className="text-slate-400 text-xs mt-2">
-              No tasks found in {segment.replace("_", " ")}
-            </Text>
-          </View>
-        }
-        renderItem={({ item }) => (
-          <View className="mb-2 p-3 rounded-xl bg-white/[0.03] border border-white/[0.06] flex-row items-center justify-between">
-            <View className="flex-1 pr-2">
-              <Text className="text-white text-sm font-medium">{item.title}</Text>
-              <Text className="text-slate-500 text-[11px] mt-0.5">
-                {item.date} {item.time ? `• ${item.time}` : ""}
-              </Text>
-            </View>
-            <View
-              className={`px-2 py-0.5 rounded text-[10px] font-semibold ${
-                item.priority === "high"
-                  ? "bg-rose-500/20 text-rose-300"
-                  : item.priority === "medium"
-                  ? "bg-amber-500/20 text-amber-300"
-                  : "bg-emerald-500/20 text-emerald-300"
+      {/* 3-Segment selector with count chips */}
+      <View className="flex-row p-1 rounded-2xl bg-white/[0.04] border border-white/[0.08] mb-4">
+        {(
+          [
+            { key: "pending", label: "Pending", count: counts.pending },
+            { key: "not_done", label: "Not Done", count: counts.not_done },
+            { key: "completed", label: "Done", count: counts.completed },
+          ] as const
+        ).map((s) => {
+          const isActive = segment === s.key;
+          return (
+            <TouchableOpacity
+              key={s.key}
+              onPress={() => setSegment(s.key)}
+              className={`flex-1 py-2 rounded-xl flex-row items-center justify-center space-x-1.5 ${
+                isActive
+                  ? "bg-indigo-600 shadow-md shadow-indigo-600/30"
+                  : "active:bg-white/[0.02]"
               }`}
             >
               <Text
-                className={`text-[10px] uppercase font-bold ${
-                  item.priority === "high"
-                    ? "text-rose-400"
-                    : item.priority === "medium"
-                    ? "text-amber-400"
-                    : "text-emerald-400"
+                className={`text-xs font-bold ${
+                  isActive ? "text-white" : "text-slate-400"
                 }`}
               >
-                {item.priority}
+                {s.label}
               </Text>
-            </View>
-          </View>
-        )}
+              <View
+                className={`px-1.5 py-0.2 rounded-full ${
+                  isActive ? "bg-white/25" : "bg-white/10"
+                }`}
+              >
+                <Text
+                  className={`text-[10px] font-bold ${
+                    isActive ? "text-white" : "text-slate-400"
+                  }`}
+                >
+                  {s.count}
+                </Text>
+              </View>
+            </TouchableOpacity>
+          );
+        })}
+      </View>
+
+      {/* Task History SectionList */}
+      <HistoryList
+        tasks={tasks}
+        segment={segment}
+        isLoading={isLoading}
+        onRefresh={loadData}
+        onToggleComplete={handleToggleComplete}
+        onSetStatus={handleSetStatus}
+        onDelete={handleDelete}
+        onJumpToDate={handleJumpToDate}
       />
     </SafeAreaView>
   );

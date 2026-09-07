@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useCallback } from "react";
 import {
   View,
   Text,
@@ -7,7 +7,7 @@ import {
   TouchableOpacity,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useRouter } from "expo-router";
+import { useRouter, useLocalSearchParams, useFocusEffect } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { DateStrip } from "../../components/DateStrip";
 import { AnytimeSection } from "../../components/AnytimeSection";
@@ -20,6 +20,8 @@ import { filterAnytimeTasks, filterTimedTasks, type Task } from "@cluanote/share
 
 export default function TodayScreen() {
   const router = useRouter();
+  const params = useLocalSearchParams<{ date?: string }>();
+
   const {
     tasks,
     isLoading,
@@ -34,9 +36,27 @@ export default function TodayScreen() {
   const {
     reminderTasks,
     showReminderBanner,
-    setShowReminderBanner,
     refreshPendingState,
+    handleDismissReminderTask,
+    handleDismissAllReminders,
+    handleReminderMarkDone,
+    handleReminderMarkNotDone,
   } = usePendingState();
+
+  // Handle jump-to-date parameters from other screens (History / Kanban)
+  useEffect(() => {
+    if (params.date && params.date !== selectedDate) {
+      setSelectedDate(params.date);
+    }
+  }, [params.date, selectedDate, setSelectedDate]);
+
+  // Refresh tasks and pending counters when screen regains focus
+  useFocusEffect(
+    useCallback(() => {
+      fetchTasks(selectedDate);
+      refreshPendingState();
+    }, [selectedDate, fetchTasks, refreshPendingState])
+  );
 
   const anytimeTasks = filterAnytimeTasks(tasks);
   const timedTasks = filterTimedTasks(tasks);
@@ -96,7 +116,21 @@ export default function TodayScreen() {
       {showReminderBanner && reminderTasks.length > 0 && (
         <ReminderBanner
           tasks={reminderTasks}
-          onDismiss={() => setShowReminderBanner(false)}
+          onDismissTask={handleDismissReminderTask}
+          onDismissAll={handleDismissAllReminders}
+          onMarkDone={async (task) => {
+            await handleReminderMarkDone(task);
+            if (task.date === selectedDate) {
+              await fetchTasks(selectedDate);
+            }
+          }}
+          onMarkNotDone={async (task) => {
+            await handleReminderMarkNotDone(task);
+            if (task.date === selectedDate) {
+              await fetchTasks(selectedDate);
+            }
+          }}
+          onJumpToDate={(date) => setSelectedDate(date)}
         />
       )}
 
