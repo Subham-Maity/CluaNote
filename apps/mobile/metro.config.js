@@ -16,4 +16,20 @@ config.resolver.nodeModulesPaths = [
   path.resolve(monorepoRoot, "node_modules"),
 ];
 
+try {
+  const nativewindPath = require.resolve("nativewind", { paths: [projectRoot] });
+  const cssInteropDir = path.dirname(
+    require.resolve("react-native-css-interop/package.json", {
+      paths: [nativewindPath],
+    })
+  );
+  config.resolver.extraNodeModules = {
+    ...config.resolver.extraNodeModules,
+    "react-native-css-interop": cssInteropDir,
+    punycode: require.resolve("punycode", { paths: [projectRoot] }),
+  };
+} catch (e) {
+  // fallback
+}
+
 module.exports = withNativeWind(config, { input: "./global.css" });
