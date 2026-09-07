@@ -87,7 +87,11 @@ export default function NoteModal() {
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-[#090d16]">
+    <SafeAreaView
+      accessible={true}
+      accessibilityViewIsModal={true}
+      className="flex-1 bg-[#090d16]"
+    >
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : "height"}
         className="flex-1"

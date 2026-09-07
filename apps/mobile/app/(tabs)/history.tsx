@@ -1,6 +1,8 @@
 import React, { useState, useCallback } from "react";
-import { View, Text, TouchableOpacity } from "react-native";
+import { View, Text, TouchableOpacity, useWindowDimensions, Platform } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { LinearGradient } from "expo-linear-gradient";
+import * as Haptics from "expo-haptics";
 import { useFocusEffect, useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import {
@@ -18,6 +20,8 @@ type TabSegment = "pending" | "not_done" | "completed";
 
 export default function HistoryScreen() {
   const router = useRouter();
+  const { width } = useWindowDimensions();
+  const isTablet = width > 768;
   const [segment, setSegment] = useState<TabSegment>("pending");
   const [tasks, setTasks] = useState<Task[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -118,83 +122,99 @@ export default function HistoryScreen() {
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-[#090d16] px-4 pt-2" edges={["top"]}>
-      {/* Header */}
-      <View className="flex-row items-center justify-between mb-3">
-        <View className="flex-row items-center space-x-2">
-          <View className="w-8 h-8 rounded-xl bg-violet-600/20 border border-violet-500/30 items-center justify-center">
-            <Ionicons name="time-outline" size={18} color="#a78bfa" />
-          </View>
-          <Text className="text-2xl font-black text-white tracking-tight">
-            History
-          </Text>
-        </View>
-
-        <TouchableOpacity
-          onPress={loadData}
-          className="p-2 rounded-xl bg-white/[0.04] border border-white/[0.08]"
-          accessibilityLabel="Refresh history"
-        >
-          <Ionicons name="reload-outline" size={16} color="#94a3b8" />
-        </TouchableOpacity>
-      </View>
-
-      {/* 3-Segment selector with count chips */}
-      <View className="flex-row p-1 rounded-2xl bg-white/[0.04] border border-white/[0.08] mb-4">
-        {(
-          [
-            { key: "pending", label: "Pending", count: counts.pending },
-            { key: "not_done", label: "Not Done", count: counts.not_done },
-            { key: "completed", label: "Done", count: counts.completed },
-          ] as const
-        ).map((s) => {
-          const isActive = segment === s.key;
-          return (
-            <TouchableOpacity
-              key={s.key}
-              onPress={() => setSegment(s.key)}
-              className={`flex-1 py-2 rounded-xl flex-row items-center justify-center space-x-1.5 ${
-                isActive
-                  ? "bg-indigo-600 shadow-md shadow-indigo-600/30"
-                  : "active:bg-white/[0.02]"
-              }`}
-            >
-              <Text
-                className={`text-xs font-bold ${
-                  isActive ? "text-white" : "text-slate-400"
-                }`}
-              >
-                {s.label}
+    <LinearGradient
+      colors={["#090d16", "#0c1222", "#090d16"]}
+      style={{ flex: 1 }}
+    >
+      <SafeAreaView className="flex-1 px-4 pt-2" edges={["top"]}>
+        <View className={isTablet ? "max-w-4xl mx-auto w-full flex-1" : "flex-1"}>
+          {/* Header */}
+          <View className="flex-row items-center justify-between mb-3">
+            <View className="flex-row items-center space-x-2">
+              <View className="w-8 h-8 rounded-xl bg-violet-600/20 border border-violet-500/30 items-center justify-center">
+                <Ionicons name="time-outline" size={18} color="#a78bfa" />
+              </View>
+              <Text className="text-2xl font-black text-white tracking-tight">
+                History
               </Text>
-              <View
-                className={`px-1.5 py-0.2 rounded-full ${
-                  isActive ? "bg-white/25" : "bg-white/10"
-                }`}
-              >
-                <Text
-                  className={`text-[10px] font-bold ${
-                    isActive ? "text-white" : "text-slate-400"
+            </View>
+
+            <TouchableOpacity
+              onPress={loadData}
+              accessibilityRole="button"
+              accessibilityLabel="Refresh history"
+              className="p-2 rounded-xl bg-white/[0.04] border border-white/[0.08]"
+            >
+              <Ionicons name="reload-outline" size={16} color="#94a3b8" />
+            </TouchableOpacity>
+          </View>
+
+          {/* 3-Segment selector with count chips */}
+          <View className="flex-row p-1 rounded-2xl bg-white/[0.04] border border-white/[0.08] mb-4">
+            {(
+              [
+                { key: "pending", label: "Pending", count: counts.pending },
+                { key: "not_done", label: "Not Done", count: counts.not_done },
+                { key: "completed", label: "Done", count: counts.completed },
+              ] as const
+            ).map((s) => {
+              const isActive = segment === s.key;
+              return (
+                <TouchableOpacity
+                  key={s.key}
+                  onPress={() => {
+                    if (Platform.OS !== "web") {
+                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+                    }
+                    setSegment(s.key);
+                  }}
+                  accessibilityRole="tab"
+                  accessibilityState={{ selected: isActive }}
+                  accessibilityLabel={`${s.label} history, ${s.count} tasks`}
+                  className={`flex-1 py-2 rounded-xl flex-row items-center justify-center space-x-1.5 ${
+                    isActive
+                      ? "bg-indigo-600 shadow-md shadow-indigo-600/30"
+                      : "active:bg-white/[0.02]"
                   }`}
                 >
-                  {s.count}
-                </Text>
-              </View>
-            </TouchableOpacity>
-          );
-        })}
-      </View>
+                  <Text
+                    className={`text-xs font-bold ${
+                      isActive ? "text-white" : "text-slate-400"
+                    }`}
+                  >
+                    {s.label}
+                  </Text>
+                  <View
+                    className={`px-1.5 py-0.2 rounded-full ${
+                      isActive ? "bg-white/25" : "bg-white/10"
+                    }`}
+                  >
+                    <Text
+                      className={`text-[10px] font-bold ${
+                        isActive ? "text-white" : "text-slate-400"
+                      }`}
+                    >
+                      {s.count}
+                    </Text>
+                  </View>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
 
-      {/* Task History SectionList */}
-      <HistoryList
-        tasks={tasks}
-        segment={segment}
-        isLoading={isLoading}
-        onRefresh={loadData}
-        onToggleComplete={handleToggleComplete}
-        onSetStatus={handleSetStatus}
-        onDelete={handleDelete}
-        onJumpToDate={handleJumpToDate}
-      />
-    </SafeAreaView>
+          {/* Task History SectionList */}
+          <HistoryList
+            tasks={tasks}
+            segment={segment}
+            isLoading={isLoading}
+            onRefresh={loadData}
+            onToggleComplete={handleToggleComplete}
+            onSetStatus={handleSetStatus}
+            onDelete={handleDelete}
+            onJumpToDate={handleJumpToDate}
+          />
+        </View>
+      </SafeAreaView>
+    </LinearGradient>
   );
 }

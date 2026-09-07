@@ -1,5 +1,6 @@
 import React from "react";
-import { View, Text, TouchableOpacity, ScrollView } from "react-native";
+import { View, Text, TouchableOpacity, ScrollView, Platform } from "react-native";
+import * as Haptics from "expo-haptics";
 import {
   format,
   addDays,
@@ -85,7 +86,16 @@ export const DateStrip: React.FC<DateStripProps> = ({
           return (
             <TouchableOpacity
               key={dateStr}
-              onPress={() => onSelectDate(dateStr)}
+              onPress={() => {
+                if (Platform.OS !== "web") {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+                }
+                onSelectDate(dateStr);
+              }}
+              accessible={true}
+              accessibilityRole="button"
+              accessibilityState={{ selected: isSelected }}
+              accessibilityLabel={`Select ${format(d, "EEEE, MMMM d")}`}
               className={`flex-1 items-center py-2 mx-0.5 rounded-xl border ${
                 isSelected
                   ? "bg-indigo-600/90 border-indigo-400 shadow-md shadow-indigo-500/30"

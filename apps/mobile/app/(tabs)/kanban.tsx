@@ -1,6 +1,7 @@
 import React, { useState, useCallback } from "react";
 import { View, Text, TouchableOpacity, Alert } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { LinearGradient } from "expo-linear-gradient";
 import { useRouter, useFocusEffect } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import {
@@ -116,45 +117,52 @@ export default function KanbanScreen() {
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-[#090d16] pt-2" edges={["top"]}>
-      {/* Header */}
-      <View className="px-4 flex-row items-center justify-between mb-3">
-        <View className="flex-row items-center space-x-2">
-          <View className="w-8 h-8 rounded-xl bg-amber-600/20 border border-amber-500/30 items-center justify-center">
-            <Ionicons name="grid-outline" size={18} color="#fbbf24" />
+    <LinearGradient
+      colors={["#090d16", "#0c1222", "#090d16"]}
+      style={{ flex: 1 }}
+    >
+      <SafeAreaView className="flex-1 pt-2" edges={["top"]}>
+        {/* Header */}
+        <View className="px-4 flex-row items-center justify-between mb-3">
+          <View className="flex-row items-center space-x-2">
+            <View className="w-8 h-8 rounded-xl bg-amber-600/20 border border-amber-500/30 items-center justify-center">
+              <Ionicons name="grid-outline" size={18} color="#fbbf24" />
+            </View>
+            <View>
+              <Text className="text-2xl font-black text-white tracking-tight">
+                Kanban
+              </Text>
+              <Text className="text-[11px] text-slate-400">
+                Future planning notes & roadmap
+              </Text>
+            </View>
           </View>
-          <View>
-            <Text className="text-2xl font-black text-white tracking-tight">
-              Kanban
-            </Text>
-            <Text className="text-[11px] text-slate-400">
-              Future planning notes & roadmap
-            </Text>
-          </View>
+
+          <TouchableOpacity
+            onPress={handleCreateFutureNote}
+            accessibilityRole="button"
+            accessibilityLabel="Create future note"
+            className="px-3 py-1.5 rounded-xl bg-amber-600 active:bg-amber-700 flex-row items-center space-x-1 shadow-md shadow-amber-600/20"
+          >
+            <Ionicons name="add" size={16} color="white" />
+            <Text className="text-white text-xs font-bold">New Note</Text>
+          </TouchableOpacity>
         </View>
 
-        <TouchableOpacity
-          onPress={handleCreateFutureNote}
-          className="px-3 py-1.5 rounded-xl bg-amber-600 active:bg-amber-700 flex-row items-center space-x-1 shadow-md shadow-amber-600/20"
-        >
-          <Ionicons name="add" size={16} color="white" />
-          <Text className="text-white text-xs font-bold">New Note</Text>
-        </TouchableOpacity>
-      </View>
+        {/* Kanban Board */}
+        <KanbanBoard
+          tasks={notes}
+          isLoading={isLoading}
+          onRefresh={loadNotes}
+          onCardPress={handleCardPress}
+          onPushToEvent={handlePushToEvent}
+          onMoveStatus={handleMoveStatus}
+          onDelete={handleDelete}
+        />
 
-      {/* Kanban Board */}
-      <KanbanBoard
-        tasks={notes}
-        isLoading={isLoading}
-        onRefresh={loadNotes}
-        onCardPress={handleCardPress}
-        onPushToEvent={handlePushToEvent}
-        onMoveStatus={handleMoveStatus}
-        onDelete={handleDelete}
-      />
-
-      {/* Floating Action Button */}
-      <FloatingActionButton onPress={handleCreateFutureNote} />
-    </SafeAreaView>
+        {/* Floating Action Button */}
+        <FloatingActionButton onPress={handleCreateFutureNote} />
+      </SafeAreaView>
+    </LinearGradient>
   );
 }

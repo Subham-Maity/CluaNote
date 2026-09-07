@@ -4,6 +4,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import * as Notifications from "expo-notifications";
+import * as Haptics from "expo-haptics";
 import { playAlarmSound, stopAlarmSound } from "../lib/alarm";
 
 export interface ActiveAlarmInfo {
@@ -62,6 +63,10 @@ export const AlarmBanner: React.FC = () => {
   }, [slideAnim]);
 
   const handleDismiss = async () => {
+    if (Platform.OS !== "web") {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+    }
+
     // Slide up banner
     Animated.timing(slideAnim, {
       toValue: -200,
@@ -143,6 +148,8 @@ export const AlarmBanner: React.FC = () => {
           {activeAlarm.date ? (
             <TouchableOpacity
               onPress={handleViewTask}
+              accessibilityRole="button"
+              accessibilityLabel="View task details"
               activeOpacity={0.8}
               className="px-3.5 py-1.5 rounded-xl bg-white/10 border border-white/10 flex-row items-center space-x-1.5"
             >
@@ -153,6 +160,8 @@ export const AlarmBanner: React.FC = () => {
 
           <TouchableOpacity
             onPress={handleDismiss}
+            accessibilityRole="button"
+            accessibilityLabel="Stop and dismiss alarm"
             activeOpacity={0.8}
             className="px-4 py-1.5 rounded-xl bg-amber-500 flex-row items-center space-x-1.5"
           >

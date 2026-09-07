@@ -1,6 +1,7 @@
-import React, { useState } from "react";
-import { View, Text, TouchableOpacity } from "react-native";
+import React, { useState, useRef } from "react";
+import { View, Text, TouchableOpacity, Animated, Platform } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import * as Haptics from "expo-haptics";
 import type { Task } from "@cluanote/shared";
 
 interface TaskCardProps {
@@ -21,10 +22,33 @@ export const TaskCard: React.FC<TaskCardProps> = ({
   onOpenNote,
 }) => {
   const [showActions, setShowActions] = useState(false);
+  const scaleAnim = useRef(new Animated.Value(1)).current;
+
   const isCompleted = task.completed === 1;
   const isNotDone = task.completed === 2;
 
+  const handlePressIn = () => {
+    Animated.spring(scaleAnim, {
+      toValue: 0.97,
+      useNativeDriver: true,
+      damping: 15,
+      stiffness: 300,
+    }).start();
+  };
+
+  const handlePressOut = () => {
+    Animated.spring(scaleAnim, {
+      toValue: 1.0,
+      useNativeDriver: true,
+      damping: 15,
+      stiffness: 300,
+    }).start();
+  };
+
   const handleCheckbox = () => {
+    if (Platform.OS !== "web") {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
+    }
     if (onSetStatus) {
       if (task.completed === 0) {
         onSetStatus(task.id, 1);
@@ -36,14 +60,38 @@ export const TaskCard: React.FC<TaskCardProps> = ({
     }
   };
 
+  const handleDelete = () => {
+    if (Platform.OS !== "web") {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning).catch(() => {});
+    }
+    onDelete(task.id);
+    setShowActions(false);
+  };
+
+  const handleQuickAction = (action: () => void) => {
+    if (Platform.OS !== "web") {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+    }
+    action();
+    setShowActions(false);
+  };
+
+  // Phase 8.6 Priority colors (indigo-500, violet-500, rose-500)
   const priorityColor = {
-    high: "bg-rose-500",
-    medium: "bg-amber-400",
-    low: "bg-emerald-400",
+    high: "bg-[#f43f5e]",
+    medium: "bg-[#8b5cf6]",
+    low: "bg-[#6366f1]",
   }[task.priority || "medium"];
 
+  const statusDescription = isCompleted
+    ? "completed"
+    : isNotDone
+    ? "not done"
+    : "pending";
+
   return (
-    <View
+    <Animated.View
+      style={{ transform: [{ scale: scaleAnim }] }}
       className={`mb-2.5 rounded-2xl border transition-all ${
         isCompleted
           ? "bg-white/[0.02] border-white/[0.05] opacity-50"
@@ -53,9 +101,20 @@ export const TaskCard: React.FC<TaskCardProps> = ({
       }`}
     >
       <TouchableOpacity
-        activeOpacity={0.7}
+        activeOpacity={0.8}
+        onPressIn={handlePressIn}
+        onPressOut={handlePressOut}
         onPress={() => onEdit(task)}
-        onLongPress={() => setShowActions(!showActions)}
+        onLongPress={() => {
+          if (Platform.OS !== "web") {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+          }
+          setShowActions(!showActions);
+        }}
+        accessible={true}
+        accessibilityRole="button"
+        accessibilityLabel={`${task.title}, ${task.priority || "medium"} priority, ${statusDescription}`}
+        accessibilityHint="Tap to edit, long press for quick actions"
         className="p-3.5 flex-row items-start justify-between"
       >
         {/* Left: Checkbox & Task details */}
@@ -63,6 +122,10 @@ export const TaskCard: React.FC<TaskCardProps> = ({
           {/* Checkbox */}
           <TouchableOpacity
             onPress={handleCheckbox}
+            accessible={true}
+            accessibilityRole="checkbox"
+            accessibilityState={{ checked: isCompleted }}
+            accessibilityLabel={`Mark "${task.title}" as ${isCompleted ? "incomplete" : "completed"}`}
             className={`w-5 h-5 mt-0.5 rounded-lg border items-center justify-center mr-3 ${
               isCompleted
                 ? "bg-indigo-600 border-indigo-400"
@@ -98,6 +161,8 @@ export const TaskCard: React.FC<TaskCardProps> = ({
             {task.note ? (
               <TouchableOpacity
                 onPress={() => onOpenNote?.(task)}
+                accessibilityRole="button"
+                accessibilityLabel="View task note"
                 className="mt-1"
               >
                 <Text
@@ -127,7 +192,7 @@ export const TaskCard: React.FC<TaskCardProps> = ({
           </View>
 
           {isNotDone && (
-            <View className="px-1.5 py-0.2 rounded bg-rose-500/20 border border-rose-500/30">
+            <View className="px-1.5 py-0.5 rounded bg-rose-500/20 border border-rose-500/30">
               <Text className="text-[9px] font-bold uppercase text-rose-300">
                 Not Done
               </Text>
@@ -141,10 +206,13 @@ export const TaskCard: React.FC<TaskCardProps> = ({
         <View className="px-3 py-2 border-t border-white/[0.06] bg-black/20 flex-row items-center justify-between">
           <View className="flex-row space-x-1">
             <TouchableOpacity
-              onPress={() => {
-                onSetStatus ? onSetStatus(task.id, 1) : onToggleComplete(task.id, true);
-                setShowActions(false);
-              }}
+              onPress={() =>
+                handleQuickAction(() =>
+                  onSetStatus ? onSetStatus(task.id, 1) : onToggleComplete(task.id, true)
+                )
+              }
+              accessibilityRole="button"
+              accessibilityLabel="Mark as done"
               className="px-2.5 py-1 rounded-lg bg-emerald-500/20 border border-emerald-500/30 flex-row items-center space-x-1"
             >
               <Ionicons name="checkmark" size={12} color="#34d399" />
@@ -152,10 +220,11 @@ export const TaskCard: React.FC<TaskCardProps> = ({
             </TouchableOpacity>
 
             <TouchableOpacity
-              onPress={() => {
-                onSetStatus?.(task.id, 2);
-                setShowActions(false);
-              }}
+              onPress={() =>
+                handleQuickAction(() => onSetStatus?.(task.id, 2))
+              }
+              accessibilityRole="button"
+              accessibilityLabel="Mark as missed"
               className="px-2.5 py-1 rounded-lg bg-rose-500/20 border border-rose-500/30 flex-row items-center space-x-1"
             >
               <Ionicons name="close" size={12} color="#fb7185" />
@@ -163,10 +232,9 @@ export const TaskCard: React.FC<TaskCardProps> = ({
             </TouchableOpacity>
 
             <TouchableOpacity
-              onPress={() => {
-                onEdit(task);
-                setShowActions(false);
-              }}
+              onPress={() => handleQuickAction(() => onEdit(task))}
+              accessibilityRole="button"
+              accessibilityLabel="Edit task"
               className="px-2.5 py-1 rounded-lg bg-white/[0.06] border border-white/[0.1] flex-row items-center space-x-1"
             >
               <Ionicons name="pencil" size={12} color="#94a3b8" />
@@ -175,16 +243,15 @@ export const TaskCard: React.FC<TaskCardProps> = ({
           </View>
 
           <TouchableOpacity
-            onPress={() => {
-              onDelete(task.id);
-              setShowActions(false);
-            }}
+            onPress={handleDelete}
+            accessibilityRole="button"
+            accessibilityLabel="Delete task"
             className="p-1 rounded-lg bg-rose-500/10"
           >
             <Ionicons name="trash-outline" size={14} color="#f43f5e" />
           </TouchableOpacity>
         </View>
       )}
-    </View>
+    </Animated.View>
   );
 };

@@ -8,9 +8,16 @@ import {
   TextInput,
   Alert,
   ActivityIndicator,
+  Linking,
+  Platform,
+  useWindowDimensions,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { useRouter } from "expo-router";
+import * as Application from "expo-application";
+import * as Haptics from "expo-haptics";
 import { Ionicons } from "@expo/vector-icons";
+import { checkMobileUpdate } from "../../lib/updater";
 import * as DocumentPicker from "expo-document-picker";
 import * as FileSystem from "expo-file-system/legacy";
 import { Audio } from "expo-av";
@@ -65,7 +72,42 @@ export default function SettingsScreen() {
   const [isSyncingNow, setIsSyncingNow] = useState(false);
   const [syncStatus, setSyncStatus] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
-  // Load all settings on mount
+  // Router, Tablet layout & Update state
+  const router = useRouter();
+  const { width } = useWindowDimensions();
+  const isTablet = width > 768;
+  const [isCheckingUpdate, setIsCheckingUpdate] = useState(false);
+  const appVersion = Application.nativeApplicationVersion || CURRENT_VERSION;
+
+  const handleCheckForUpdates = async () => {
+    if (isCheckingUpdate) return;
+    setIsCheckingUpdate(true);
+    try {
+      if (Platform.OS !== "web") {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+      }
+      const res = await checkMobileUpdate(true);
+      if (res.hasUpdate) {
+        Alert.alert(
+          "Update Available",
+          `CluaNote ${res.latestVersion} is now available (current: v${res.currentVersion}).`,
+          [
+            { text: "Later", style: "cancel" },
+            {
+              text: "View Release",
+              onPress: () => Linking.openURL(res.releaseUrl),
+            },
+          ]
+        );
+      } else {
+        Alert.alert("Up to Date", `CluaNote v${res.currentVersion} is the latest version.`);
+      }
+    } catch {
+      Alert.alert("Check Failed", "Could not check for updates. Please check your internet connection.");
+    } finally {
+      setIsCheckingUpdate(false);
+    }
+  };
   useEffect(() => {
     let isMounted = true;
 
@@ -425,7 +467,8 @@ export default function SettingsScreen() {
       </Text>
 
       <ScrollView contentContainerStyle={{ paddingBottom: 100 }} showsVerticalScrollIndicator={false}>
-        {/* App Info Card */}
+        <View className={isTablet ? "max-w-3xl mx-auto w-full" : "w-full"}>
+          {/* App Info Card */}
         <View className="p-4 rounded-2xl bg-white/[0.04] border border-white/[0.08] mb-4">
           <View className="flex-row items-center space-x-3 mb-2">
             <View className="w-10 h-10 rounded-xl bg-indigo-600/30 border border-indigo-500/40 items-center justify-center">
@@ -730,19 +773,124 @@ export default function SettingsScreen() {
         </View>
 
         {/* ------------------------------------------------------------------ */}
-        {/* Project Info Section */}
+        {/* Updates & Release Notes Section */}
         {/* ------------------------------------------------------------------ */}
         <Text className="text-slate-400 text-xs font-semibold uppercase tracking-wider mb-2 ml-1">
-          About
+          Updates & Changelog
         </Text>
         <View className="rounded-2xl bg-white/[0.04] border border-white/[0.08] overflow-hidden mb-4">
-          <View className="p-3.5 flex-row items-center justify-between">
+          <TouchableOpacity
+            onPress={() => router.push("/modal/release-notes")}
+            accessibilityRole="button"
+            accessibilityLabel="Release notes and changelog"
+            activeOpacity={0.7}
+            className="p-3.5 border-b border-white/[0.06] flex-row items-center justify-between"
+          >
+            <View className="flex-row items-center space-x-3">
+              <Ionicons name="newspaper-outline" size={18} color="#818cf8" />
+              <Text className="text-white text-sm">Release Notes</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={14} color="#64748b" />
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            onPress={handleCheckForUpdates}
+            disabled={isCheckingUpdate}
+            accessibilityRole="button"
+            accessibilityLabel="Check for software updates"
+            activeOpacity={0.7}
+            className="p-3.5 flex-row items-center justify-between"
+          >
+            <View className="flex-row items-center space-x-3">
+              <Ionicons name="cloud-download-outline" size={18} color="#818cf8" />
+              <Text className="text-white text-sm">Check for Updates</Text>
+            </View>
+            <View className="flex-row items-center space-x-1.5">
+              {isCheckingUpdate ? (
+                <ActivityIndicator size="small" color="#818cf8" />
+              ) : (
+                <>
+                  <Text className="text-indigo-400 text-xs font-semibold">v{appVersion}</Text>
+                  <Ionicons name="chevron-forward" size={14} color="#64748b" />
+                </>
+              )}
+            </View>
+          </TouchableOpacity>
+        </View>
+
+        {/* ------------------------------------------------------------------ */}
+        {/* About CluaNote Section */}
+        {/* ------------------------------------------------------------------ */}
+        <Text className="text-slate-400 text-xs font-semibold uppercase tracking-wider mb-2 ml-1">
+          About CluaNote
+        </Text>
+        <View className="rounded-2xl bg-white/[0.04] border border-white/[0.08] overflow-hidden mb-6">
+          <View className="p-3.5 border-b border-white/[0.06] flex-row items-center justify-between">
+            <View className="flex-row items-center space-x-3">
+              <Ionicons name="information-circle-outline" size={18} color="#818cf8" />
+              <Text className="text-white text-sm">Application</Text>
+            </View>
+            <Text className="text-slate-300 text-xs font-medium">CluaNote Mobile v{appVersion}</Text>
+          </View>
+
+          <View className="p-3.5 border-b border-white/[0.06] flex-row items-center justify-between">
+            <View className="flex-row items-center space-x-3">
+              <Ionicons name="person-outline" size={18} color="#818cf8" />
+              <Text className="text-white text-sm">Created By</Text>
+            </View>
+            <Text className="text-slate-300 text-xs font-medium">Subham Maity</Text>
+          </View>
+
+          <TouchableOpacity
+            onPress={() => Linking.openURL(`https://github.com/${GITHUB_REPO}`)}
+            accessibilityRole="button"
+            accessibilityLabel="Open GitHub repository"
+            activeOpacity={0.7}
+            className="p-3.5 border-b border-white/[0.06] flex-row items-center justify-between"
+          >
             <View className="flex-row items-center space-x-3">
               <Ionicons name="logo-github" size={18} color="#818cf8" />
               <Text className="text-white text-sm">GitHub Repository</Text>
             </View>
-            <Text className="text-slate-400 text-xs font-mono">{GITHUB_REPO}</Text>
+            <Ionicons name="open-outline" size={14} color="#64748b" />
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            onPress={() => Linking.openURL("https://x.com/subham_maity_")}
+            accessibilityRole="button"
+            accessibilityLabel="Open Twitter profile"
+            activeOpacity={0.7}
+            className="p-3.5 border-b border-white/[0.06] flex-row items-center justify-between"
+          >
+            <View className="flex-row items-center space-x-3">
+              <Ionicons name="logo-twitter" size={18} color="#818cf8" />
+              <Text className="text-white text-sm">Twitter / X (@subham_maity_)</Text>
+            </View>
+            <Ionicons name="open-outline" size={14} color="#64748b" />
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            onPress={() => Linking.openURL("https://instagram.com/subham_maity")}
+            accessibilityRole="button"
+            accessibilityLabel="Open Instagram profile"
+            activeOpacity={0.7}
+            className="p-3.5 border-b border-white/[0.06] flex-row items-center justify-between"
+          >
+            <View className="flex-row items-center space-x-3">
+              <Ionicons name="logo-instagram" size={18} color="#818cf8" />
+              <Text className="text-white text-sm">Instagram (@subham_maity)</Text>
+            </View>
+            <Ionicons name="open-outline" size={14} color="#64748b" />
+          </TouchableOpacity>
+
+          <View className="p-3.5 flex-row items-center justify-between">
+            <View className="flex-row items-center space-x-3">
+              <Ionicons name="ribbon-outline" size={18} color="#818cf8" />
+              <Text className="text-white text-sm">License</Text>
+            </View>
+            <Text className="text-slate-400 text-xs">MIT License • Open Source</Text>
           </View>
+        </View>
         </View>
       </ScrollView>
     </SafeAreaView>

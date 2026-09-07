@@ -10,6 +10,14 @@ import { initDb, DB_NAME } from "../lib/db";
 import { requestNotificationPermission } from "../lib/alarm";
 import { startMobileAutoSync } from "../lib/sync";
 import { AlarmBanner } from "../components/AlarmBanner";
+import { UpdateBanner } from "../components/UpdateBanner";
+import {
+  useFonts,
+  Inter_400Regular,
+  Inter_500Medium,
+  Inter_600SemiBold,
+  Inter_700Bold,
+} from "@expo-google-fonts/inter";
 import "../global.css";
 
 // Configure foreground notification presentation behavior
@@ -27,6 +35,12 @@ const PERMISSION_ALERT_KEY = "cluanote_notif_permission_alerted";
 
 export default function RootLayout() {
   const router = useRouter();
+  const [fontsLoaded] = useFonts({
+    Inter_400Regular,
+    Inter_500Medium,
+    Inter_600SemiBold,
+    Inter_700Bold,
+  });
 
   useEffect(() => {
     // 1. Initialize SQLite Database
@@ -114,9 +128,18 @@ export default function RootLayout() {
               animation: "slide_from_bottom",
             }}
           />
+          <Stack.Screen
+            name="modal/release-notes"
+            options={{
+              presentation: "modal",
+              animation: "slide_from_bottom",
+            }}
+          />
         </Stack>
         {/* Global floating in-app alarm banner */}
         <AlarmBanner />
+        {/* Global floating update banner */}
+        <UpdateBanner />
       </SQLiteProvider>
     </GestureHandlerRootView>
   );
