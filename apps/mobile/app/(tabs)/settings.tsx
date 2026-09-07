@@ -1,18 +1,20 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
   TouchableOpacity,
   ScrollView,
   Switch,
+  TextInput,
   Alert,
-  Platform,
+  ActivityIndicator,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import * as DocumentPicker from "expo-document-picker";
 import * as FileSystem from "expo-file-system/legacy";
 import { Audio } from "expo-av";
+import { format, parseISO } from "date-fns";
 import { CURRENT_VERSION, GITHUB_REPO } from "@cluanote/shared";
 import {
   isAlarmEnabled,
@@ -24,8 +26,23 @@ import {
   requestNotificationPermission,
 } from "../../lib/alarm";
 import { getAllTasks } from "../../lib/tasks";
+import {
+  exportBackup,
+  pickBackupFile,
+  inspectBackupJson,
+  restoreTasksFromJson,
+  getLastBackupDate,
+} from "../../lib/backup";
+import {
+  getSyncConfig,
+  saveSyncConfig,
+  disconnectSync,
+  testSyncConnection,
+  runPostgresSync,
+} from "../../lib/sync";
 
 export default function SettingsScreen() {
+  // Alarm states
   const [alarmActive, setAlarmActive] = useState(true);
   const [customSoundUri, setSoundUriState] = useState<string | null>(null);
   const [soundFileName, setSoundFileName] = useState<string>("Default Chime");
@@ -34,34 +51,64 @@ export default function SettingsScreen() {
   const [hasPermission, setHasPermission] = useState<boolean | null>(null);
   const [isRescheduling, setIsRescheduling] = useState(false);
 
-  // Load initial alarm settings
+  // Backup & Restore states
+  const [lastBackupDate, setLastBackupDateState] = useState<string | null>(null);
+  const [isExporting, setIsExporting] = useState(false);
+  const [isImporting, setIsImporting] = useState(false);
+
+  // Cloud Sync states
+  const [isConfigured, setIsConfigured] = useState(false);
+  const [syncUrlInput, setSyncUrlInput] = useState("");
+  const [autoSyncActive, setAutoSyncActive] = useState(true);
+  const [lastSyncedAt, setLastSyncedAt] = useState<string | null>(null);
+  const [isTestingSync, setIsTestingSync] = useState(false);
+  const [isSyncingNow, setIsSyncingNow] = useState(false);
+  const [syncStatus, setSyncStatus] = useState<{ type: "success" | "error"; text: string } | null>(null);
+
+  // Load all settings on mount
   useEffect(() => {
     let isMounted = true;
 
-    async function loadSettings() {
+    async function loadAllSettings() {
       try {
+        // Alarms
         const enabled = await isAlarmEnabled();
         const soundUri = await getCustomSoundUri();
-
         if (isMounted) {
           setAlarmActive(enabled);
           setSoundUriState(soundUri);
           if (soundUri) {
             const parts = soundUri.split("/");
             const rawName = parts[parts.length - 1] || "Custom Audio";
-            // Strip timestamp prefix if present
             const cleanName = rawName.replace(/^custom_alarm_\d+_/, "");
             setSoundFileName(decodeURIComponent(cleanName));
           } else {
             setSoundFileName("Default Chime");
           }
         }
+
+        // Backup
+        const backupDate = await getLastBackupDate();
+        if (isMounted) {
+          setLastBackupDateState(backupDate);
+        }
+
+        // Sync
+        const syncConf = await getSyncConfig();
+        if (isMounted) {
+          setIsConfigured(syncConf.isConfigured);
+          setAutoSyncActive(syncConf.autoSync);
+          setLastSyncedAt(syncConf.lastSyncedAt);
+          if (syncConf.url) {
+            setSyncUrlInput(syncConf.url);
+          }
+        }
       } catch (err) {
-        console.warn("Failed to load alarm settings:", err);
+        console.warn("Failed to load settings:", err);
       }
     }
 
-    loadSettings();
+    loadAllSettings();
     return () => {
       isMounted = false;
     };
@@ -77,11 +124,12 @@ export default function SettingsScreen() {
     };
   }, [previewSound]);
 
-  // Toggle master alarm switch
+  // --------------------------------------------------------------------------
+  // Alarm Handlers
+  // --------------------------------------------------------------------------
   const handleToggleAlarm = async (value: boolean) => {
     setAlarmActive(value);
     await setAlarmEnabled(value);
-
     try {
       if (value) {
         const allTasks = await getAllTasks();
@@ -94,7 +142,6 @@ export default function SettingsScreen() {
     }
   };
 
-  // Pick a custom audio file using DocumentPicker
   const handlePickCustomSound = async () => {
     try {
       const result = await DocumentPicker.getDocumentAsync({
@@ -129,7 +176,6 @@ export default function SettingsScreen() {
     }
   };
 
-  // Play / Stop preview audio
   const handleToggleSoundPreview = async () => {
     try {
       if (isPlayingPreview) {
@@ -169,7 +215,6 @@ export default function SettingsScreen() {
     }
   };
 
-  // Clear custom sound and revert to default chime
   const handleResetSound = async () => {
     if (previewSound) {
       await previewSound.stopAsync().catch(() => {});
@@ -182,7 +227,6 @@ export default function SettingsScreen() {
     setSoundFileName("Default Chime");
   };
 
-  // Manually re-sync all alarms
   const handleRescheduleAll = async () => {
     setIsRescheduling(true);
     try {
@@ -197,7 +241,6 @@ export default function SettingsScreen() {
     }
   };
 
-  // Request / verify permissions
   const handleCheckPermission = async () => {
     const granted = await requestNotificationPermission();
     setHasPermission(granted);
@@ -208,6 +251,170 @@ export default function SettingsScreen() {
         "Permission Denied",
         "Please allow notifications for CluaNote in your device settings to receive timely alarms."
       );
+    }
+  };
+
+  // --------------------------------------------------------------------------
+  // Backup & Restore Handlers
+  // --------------------------------------------------------------------------
+  const handleExportBackup = async () => {
+    try {
+      setIsExporting(true);
+      await exportBackup();
+      const updatedDate = await getLastBackupDate();
+      setLastBackupDateState(updatedDate);
+    } catch (err) {
+      console.error("Failed to export backup:", err);
+      Alert.alert("Export Failed", err instanceof Error ? err.message : "Could not export backup.");
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  const handleImportBackup = async () => {
+    try {
+      setIsImporting(true);
+      const file = await pickBackupFile();
+      if (!file) {
+        setIsImporting(false);
+        return;
+      }
+
+      const info = inspectBackupJson(file.content);
+      if (info.count === 0) {
+        Alert.alert("Empty File", "The selected file does not contain any valid tasks.");
+        setIsImporting(false);
+        return;
+      }
+
+      Alert.alert(
+        "Restore Backup",
+        `Found ${info.count} task(s) in "${file.name}".\n\nExisting tasks will be updated non-destructively only if the backup contains newer edits. Proceed?`,
+        [
+          { text: "Cancel", style: "cancel", onPress: () => setIsImporting(false) },
+          {
+            text: "Restore",
+            style: "default",
+            onPress: async () => {
+              try {
+                const count = await restoreTasksFromJson(file.content);
+                const updatedDate = await getLastBackupDate();
+                setLastBackupDateState(updatedDate);
+                Alert.alert("Restore Complete", `Successfully processed and merged ${count} task(s).`);
+              } catch (importErr) {
+                Alert.alert("Import Error", importErr instanceof Error ? importErr.message : "Failed to parse tasks.");
+              } finally {
+                setIsImporting(false);
+              }
+            },
+          },
+        ]
+      );
+    } catch (err) {
+      console.error("Import file pick error:", err);
+      Alert.alert("Import Failed", "Failed to read backup file.");
+      setIsImporting(false);
+    }
+  };
+
+  // --------------------------------------------------------------------------
+  // Cloud Sync Handlers
+  // --------------------------------------------------------------------------
+  const handleTestSync = async () => {
+    if (!syncUrlInput.trim()) {
+      Alert.alert("Input Required", "Please enter a PostgreSQL or Sync Server connection URL.");
+      return;
+    }
+
+    try {
+      setIsTestingSync(true);
+      setSyncStatus(null);
+      const res = await testSyncConnection(syncUrlInput.trim());
+      setSyncStatus({ type: "success", text: res.message });
+      Alert.alert("Connection Verified", res.message);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      setSyncStatus({ type: "error", text: msg });
+      Alert.alert("Connection Failed", msg);
+    } finally {
+      setIsTestingSync(false);
+    }
+  };
+
+  const handleSaveAndSync = async () => {
+    if (!syncUrlInput.trim()) {
+      Alert.alert("Input Required", "Please enter a connection URL.");
+      return;
+    }
+
+    try {
+      setIsSyncingNow(true);
+      setSyncStatus(null);
+      await saveSyncConfig(syncUrlInput.trim(), autoSyncActive);
+      setIsConfigured(true);
+
+      const res = await runPostgresSync();
+      setLastSyncedAt(res.syncedAt);
+      setSyncStatus({ type: "success", text: res.message });
+      Alert.alert("Sync Successful", res.message);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      setSyncStatus({ type: "error", text: msg });
+      Alert.alert("Sync Error", msg);
+    } finally {
+      setIsSyncingNow(false);
+    }
+  };
+
+  const handleManualSync = async () => {
+    try {
+      setIsSyncingNow(true);
+      setSyncStatus(null);
+      const res = await runPostgresSync();
+      setLastSyncedAt(res.syncedAt);
+      setSyncStatus({ type: "success", text: res.message });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      setSyncStatus({ type: "error", text: msg });
+      Alert.alert("Sync Failed", msg);
+    } finally {
+      setIsSyncingNow(false);
+    }
+  };
+
+  const handleToggleAutoSync = async (val: boolean) => {
+    setAutoSyncActive(val);
+    if (syncUrlInput.trim()) {
+      await saveSyncConfig(syncUrlInput.trim(), val);
+    }
+  };
+
+  const handleDisconnect = async () => {
+    Alert.alert(
+      "Disconnect Sync",
+      "Remove stored synchronization configuration? Your local tasks will remain safe on your device.",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Disconnect",
+          style: "destructive",
+          onPress: async () => {
+            await disconnectSync();
+            setIsConfigured(false);
+            setSyncUrlInput("");
+            setSyncStatus(null);
+          },
+        },
+      ]
+    );
+  };
+
+  const formatIsoDate = (isoStr: string | null) => {
+    if (!isoStr) return "Never";
+    try {
+      return format(parseISO(isoStr), "MMM d, yyyy h:mm a");
+    } catch {
+      return isoStr;
     }
   };
 
@@ -230,11 +437,182 @@ export default function SettingsScreen() {
             </View>
           </View>
           <Text className="text-slate-300 text-xs leading-relaxed">
-            Minimalist, dark glassmorphic task & schedule manager. Fast on-device SQLite database with exact scheduled notifications and background alarms.
+            Minimalist, dark glassmorphic task & schedule manager. Fast on-device SQLite database with background alarms, cloud sync, and JSON backup.
           </Text>
         </View>
 
+        {/* ------------------------------------------------------------------ */}
+        {/* PostgreSQL Cloud Sync Section */}
+        {/* ------------------------------------------------------------------ */}
+        <View className="flex-row items-center justify-between mb-2 ml-1">
+          <Text className="text-slate-400 text-xs font-semibold uppercase tracking-wider">
+            Cloud & PostgreSQL Sync
+          </Text>
+          {isConfigured ? (
+            <View className="flex-row items-center space-x-1">
+              <View className="w-2 h-2 rounded-full bg-emerald-400" />
+              <Text className="text-emerald-400 text-xs font-semibold">Active</Text>
+            </View>
+          ) : (
+            <Text className="text-slate-500 text-xs font-medium">Not Connected</Text>
+          )}
+        </View>
+
+        <View className="rounded-2xl bg-white/[0.04] border border-white/[0.08] p-4 mb-4">
+          <Text className="text-slate-300 text-xs mb-3 leading-relaxed">
+            Bi-directional sync pulls the newest changes from the cloud first, prevents overwriting newer data, and pushes your recent edits.
+          </Text>
+
+          {/* Database / Sync Server URL Input */}
+          <Text className="text-slate-400 text-xs font-medium mb-1">
+            Database / Server URL
+          </Text>
+          <TextInput
+            value={syncUrlInput}
+            onChangeText={setSyncUrlInput}
+            placeholder="postgresql://user:pass@ep-xyz.neon.tech/neondb"
+            placeholderTextColor="#475569"
+            autoCapitalize="none"
+            autoCorrect={false}
+            className="w-full bg-black/40 border border-white/10 rounded-xl px-3.5 py-2.5 text-white text-xs font-mono mb-3"
+          />
+
+          {syncStatus ? (
+            <View
+              className={`p-2.5 rounded-xl mb-3 ${
+                syncStatus.type === "success"
+                  ? "bg-emerald-500/10 border border-emerald-500/30"
+                  : "bg-rose-500/10 border border-rose-500/30"
+              }`}
+            >
+              <Text
+                className={`text-xs ${
+                  syncStatus.type === "success" ? "text-emerald-300" : "text-rose-300"
+                }`}
+              >
+                {syncStatus.text}
+              </Text>
+            </View>
+          ) : null}
+
+          {/* Action Buttons */}
+          <View className="flex-row items-center space-x-2 mb-3">
+            <TouchableOpacity
+              onPress={handleTestSync}
+              disabled={isTestingSync || isSyncingNow}
+              activeOpacity={0.7}
+              className="flex-1 py-2 px-3 rounded-xl bg-white/10 border border-white/10 flex-row items-center justify-center space-x-1.5"
+            >
+              {isTestingSync ? (
+                <ActivityIndicator size="small" color="#94a3b8" />
+              ) : (
+                <>
+                  <Ionicons name="wifi-outline" size={15} color="#94a3b8" />
+                  <Text className="text-slate-200 text-xs font-semibold">Test Connection</Text>
+                </>
+              )}
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              onPress={isConfigured ? handleManualSync : handleSaveAndSync}
+              disabled={isTestingSync || isSyncingNow}
+              activeOpacity={0.7}
+              className="flex-1 py-2 px-3 rounded-xl bg-indigo-600 flex-row items-center justify-center space-x-1.5"
+            >
+              {isSyncingNow ? (
+                <ActivityIndicator size="small" color="#ffffff" />
+              ) : (
+                <>
+                  <Ionicons name="sync-outline" size={15} color="#ffffff" />
+                  <Text className="text-white text-xs font-bold">
+                    {isConfigured ? "Sync Now" : "Connect & Sync"}
+                  </Text>
+                </>
+              )}
+            </TouchableOpacity>
+          </View>
+
+          {/* Auto-Sync Toggle & Disconnect */}
+          <View className="pt-2 border-t border-white/[0.06] flex-row items-center justify-between">
+            <View className="flex-1 pr-2">
+              <Text className="text-white text-xs font-medium">Automatic Background Sync</Text>
+              <Text className="text-slate-400 text-[11px]">Sync on app open & periodically</Text>
+            </View>
+            <Switch
+              value={autoSyncActive}
+              onValueChange={handleToggleAutoSync}
+              trackColor={{ false: "#1e293b", true: "#4f46e5" }}
+              thumbColor={autoSyncActive ? "#818cf8" : "#64748b"}
+            />
+          </View>
+
+          <View className="pt-2 mt-2 border-t border-white/[0.06] flex-row items-center justify-between">
+            <Text className="text-slate-400 text-xs">
+              Last synced: <Text className="text-slate-200 font-medium">{formatIsoDate(lastSyncedAt)}</Text>
+            </Text>
+            {isConfigured ? (
+              <TouchableOpacity onPress={handleDisconnect} activeOpacity={0.7}>
+                <Text className="text-rose-400 text-xs font-semibold">Disconnect</Text>
+              </TouchableOpacity>
+            ) : null}
+          </View>
+        </View>
+
+        {/* ------------------------------------------------------------------ */}
+        {/* Backup & Restore Section */}
+        {/* ------------------------------------------------------------------ */}
+        <Text className="text-slate-400 text-xs font-semibold uppercase tracking-wider mb-2 ml-1">
+          Backup & Restore
+        </Text>
+        <View className="rounded-2xl bg-white/[0.04] border border-white/[0.08] p-4 mb-4">
+          <Text className="text-slate-300 text-xs mb-3 leading-relaxed">
+            Export a full JSON backup of your tasks to Google Drive, iCloud, or local files. Restoring merges tasks safely using timestamp conflict resolution.
+          </Text>
+
+          <View className="flex-row items-center space-x-2 mb-3">
+            <TouchableOpacity
+              onPress={handleExportBackup}
+              disabled={isExporting || isImporting}
+              activeOpacity={0.7}
+              className="flex-1 py-2.5 px-3 rounded-xl bg-indigo-600/30 border border-indigo-500/40 flex-row items-center justify-center space-x-2"
+            >
+              {isExporting ? (
+                <ActivityIndicator size="small" color="#818cf8" />
+              ) : (
+                <>
+                  <Ionicons name="share-outline" size={16} color="#818cf8" />
+                  <Text className="text-indigo-200 text-xs font-semibold">Export Backup</Text>
+                </>
+              )}
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              onPress={handleImportBackup}
+              disabled={isExporting || isImporting}
+              activeOpacity={0.7}
+              className="flex-1 py-2.5 px-3 rounded-xl bg-white/10 border border-white/10 flex-row items-center justify-center space-x-2"
+            >
+              {isImporting ? (
+                <ActivityIndicator size="small" color="#e2e8f0" />
+              ) : (
+                <>
+                  <Ionicons name="download-outline" size={16} color="#e2e8f0" />
+                  <Text className="text-slate-200 text-xs font-semibold">Import Backup</Text>
+                </>
+              )}
+            </TouchableOpacity>
+          </View>
+
+          <View className="pt-2 border-t border-white/[0.06] flex-row items-center justify-between">
+            <Text className="text-slate-400 text-xs">
+              Last backup: <Text className="text-slate-200 font-medium">{formatIsoDate(lastBackupDate)}</Text>
+            </Text>
+          </View>
+        </View>
+
+        {/* ------------------------------------------------------------------ */}
         {/* Alarms & Notifications Section */}
+        {/* ------------------------------------------------------------------ */}
         <Text className="text-slate-400 text-xs font-semibold uppercase tracking-wider mb-2 ml-1">
           Alarms & Notifications
         </Text>
@@ -351,19 +729,13 @@ export default function SettingsScreen() {
           </TouchableOpacity>
         </View>
 
-        {/* Sync & Integration Section */}
+        {/* ------------------------------------------------------------------ */}
+        {/* Project Info Section */}
+        {/* ------------------------------------------------------------------ */}
         <Text className="text-slate-400 text-xs font-semibold uppercase tracking-wider mb-2 ml-1">
-          Sync & Cloud
+          About
         </Text>
         <View className="rounded-2xl bg-white/[0.04] border border-white/[0.08] overflow-hidden mb-4">
-          <View className="p-3.5 border-b border-white/[0.06] flex-row items-center justify-between">
-            <View className="flex-row items-center space-x-3">
-              <Ionicons name="cloud-upload-outline" size={18} color="#818cf8" />
-              <Text className="text-white text-sm">PostgreSQL Sync</Text>
-            </View>
-            <Text className="text-slate-500 text-xs">Phase 7 Integration</Text>
-          </View>
-
           <View className="p-3.5 flex-row items-center justify-between">
             <View className="flex-row items-center space-x-3">
               <Ionicons name="logo-github" size={18} color="#818cf8" />

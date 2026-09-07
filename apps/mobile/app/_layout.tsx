@@ -8,6 +8,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Notifications from "expo-notifications";
 import { initDb, DB_NAME } from "../lib/db";
 import { requestNotificationPermission } from "../lib/alarm";
+import { startMobileAutoSync } from "../lib/sync";
 import { AlarmBanner } from "../components/AlarmBanner";
 import "../global.css";
 
@@ -74,8 +75,12 @@ export default function RootLayout() {
       }
     );
 
+    // 4. Start background / foreground auto-sync worker
+    const stopAutoSync = startMobileAutoSync();
+
     return () => {
       responseSub.remove();
+      stopAutoSync();
     };
   }, [router]);
 

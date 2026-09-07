@@ -412,7 +412,7 @@ pub async fn sync_postgres_impl(
         .await
         .map_err(|e| format!("Transaction error: {}", map_pg_error(e)))?;
 
-    // 1. Fetch all remote rows from PostgreSQL
+    // 1. Fetch all remote rows from PostgreSQL FIRST
     let rows = tx
         .query(
             r#"
@@ -424,9 +424,10 @@ pub async fn sync_postgres_impl(
                 time, 
                 priority, 
                 completed, 
-                to_char(created_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') as created_at_str,
-                to_char(updated_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') as updated_at_str,
-                is_deleted
+                to_char(created_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"') as created_at_str,
+                to_char(updated_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"') as updated_at_str,
+                is_deleted,
+                is_future_note
             FROM cluanote_tasks
             "#,
             &[],
@@ -466,84 +467,104 @@ pub async fn sync_postgres_impl(
         });
     }
 
-    // 2. Push local tasks into PostgreSQL using UPSERT with timestamp conflict resolution
-    let mut pushed_count = 0;
-    let upsert_stmt = tx
-        .prepare(
-            r#"
-            INSERT INTO cluanote_tasks (
-                uuid, title, note, date, time, priority, completed, created_at, updated_at, is_deleted, is_future_note
-            )
-            VALUES (
-                $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11
-            )
-            ON CONFLICT (uuid) DO UPDATE SET
-                title = EXCLUDED.title,
-                note = EXCLUDED.note,
-                date = EXCLUDED.date,
-                time = EXCLUDED.time,
-                priority = EXCLUDED.priority,
-                completed = EXCLUDED.completed,
-                updated_at = EXCLUDED.updated_at,
-                is_deleted = EXCLUDED.is_deleted,
-                is_future_note = EXCLUDED.is_future_note
-            WHERE EXCLUDED.updated_at >= cluanote_tasks.updated_at;
-            "#,
-        )
-        .await
-        .map_err(|e| format!("Failed to prepare upsert query: {}", map_pg_error(e)))?;
+    // 2. Reconcile differences: PULL latest remote tasks FIRST, PUSH newer local tasks
+    let local_map: std::collections::HashMap<String, &SyncTask> =
+        local_tasks.iter().map(|t| (t.uuid.clone(), t)).collect();
+    let remote_map: std::collections::HashMap<String, &SyncTask> =
+        remote_tasks.iter().map(|t| (t.uuid.clone(), t)).collect();
 
+    // Pull any remote task that is newer or newly added on another device (e.g. mobile)
+    let mut pulled_tasks: Vec<SyncTask> = Vec::new();
+    for remote in &remote_tasks {
+        if let Some(local) = local_map.get(&remote.uuid) {
+            let remote_dt = parse_iso_or_now(&remote.updated_at);
+            let local_dt = parse_iso_or_now(&local.updated_at);
+            if remote_dt > local_dt {
+                pulled_tasks.push(remote.clone());
+            }
+        } else {
+            // New remote record created on mobile / other device -> pull immediately
+            pulled_tasks.push(remote.clone());
+        }
+    }
+
+    // Determine which local tasks are genuinely newer and need pushing to remote
+    let mut to_push: Vec<&SyncTask> = Vec::new();
     for local in &local_tasks {
-        let is_deleted_bool = local.is_deleted == 1;
-        let completed_i32: i32 = local.completed as i32;
-        let is_future_note_i32: i32 = local.is_future_note;
-        let created_at_dt: DateTime<Utc> = parse_iso_or_now(&local.created_at);
-        let updated_at_dt: DateTime<Utc> = parse_iso_or_now(&local.updated_at);
+        if let Some(remote) = remote_map.get(&local.uuid) {
+            let local_dt = parse_iso_or_now(&local.updated_at);
+            let remote_dt = parse_iso_or_now(&remote.updated_at);
+            if local_dt > remote_dt {
+                to_push.push(local);
+            }
+        } else {
+            // New local record created on this device -> push
+            to_push.push(local);
+        }
+    }
 
-        tx.execute(
-            &upsert_stmt,
-            &[
-                &local.uuid,
-                &local.title,
-                &local.note,
-                &local.date,
-                &local.time,
-                &local.priority,
-                &completed_i32,
-                &created_at_dt,
-                &updated_at_dt,
-                &is_deleted_bool,
-                &is_future_note_i32,
-            ],
-        )
-        .await
-        .map_err(|e| format!("Failed to sync task '{}': {}", local.title, map_pg_error(e)))?;
+    // 3. Only push tasks that have newer changes, preventing stale local data from overriding remote
+    let mut pushed_count = 0;
+    if !to_push.is_empty() {
+        let upsert_stmt = tx
+            .prepare(
+                r#"
+                INSERT INTO cluanote_tasks (
+                    uuid, title, note, date, time, priority, completed, created_at, updated_at, is_deleted, is_future_note
+                )
+                VALUES (
+                    $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11
+                )
+                ON CONFLICT (uuid) DO UPDATE SET
+                    title = EXCLUDED.title,
+                    note = EXCLUDED.note,
+                    date = EXCLUDED.date,
+                    time = EXCLUDED.time,
+                    priority = EXCLUDED.priority,
+                    completed = EXCLUDED.completed,
+                    updated_at = EXCLUDED.updated_at,
+                    is_deleted = EXCLUDED.is_deleted,
+                    is_future_note = EXCLUDED.is_future_note
+                WHERE EXCLUDED.updated_at >= cluanote_tasks.updated_at;
+                "#,
+            )
+            .await
+            .map_err(|e| format!("Failed to prepare upsert query: {}", map_pg_error(e)))?;
 
-        pushed_count += 1;
+        for local in to_push {
+            let is_deleted_bool = local.is_deleted == 1;
+            let completed_i32: i32 = local.completed as i32;
+            let is_future_note_i32: i32 = local.is_future_note;
+            let created_at_dt: DateTime<Utc> = parse_iso_or_now(&local.created_at);
+            let updated_at_dt: DateTime<Utc> = parse_iso_or_now(&local.updated_at);
+
+            tx.execute(
+                &upsert_stmt,
+                &[
+                    &local.uuid,
+                    &local.title,
+                    &local.note,
+                    &local.date,
+                    &local.time,
+                    &local.priority,
+                    &completed_i32,
+                    &created_at_dt,
+                    &updated_at_dt,
+                    &is_deleted_bool,
+                    &is_future_note_i32,
+                ],
+            )
+            .await
+            .map_err(|e| format!("Failed to sync task '{}': {}", local.title, map_pg_error(e)))?;
+
+            pushed_count += 1;
+        }
     }
 
     // Commit Postgres transaction
     tx.commit()
         .await
         .map_err(|e| format!("Failed to commit sync transaction: {}", map_pg_error(e)))?;
-
-    // 3. Determine which remote tasks should be pulled into local SQLite
-    // Conflict resolution: Remote wins if remote.updated_at > local.updated_at, or if not present locally
-    let mut pulled_tasks: Vec<SyncTask> = Vec::new();
-    let local_map: std::collections::HashMap<String, &SyncTask> =
-        local_tasks.iter().map(|t| (t.uuid.clone(), t)).collect();
-
-    for remote in remote_tasks {
-        if let Some(local) = local_map.get(&remote.uuid) {
-            // Compare timestamps
-            if remote.updated_at > local.updated_at {
-                pulled_tasks.push(remote);
-            }
-        } else {
-            // New remote record (e.g. created on another device)
-            pulled_tasks.push(remote);
-        }
-    }
 
     let pulled_count = pulled_tasks.len();
     let now_iso = Utc::now().to_rfc3339();

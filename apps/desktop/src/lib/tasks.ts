@@ -354,7 +354,19 @@ export async function importTasksFromJson(jsonData: string): Promise<number> {
     const nowIso = new Date().toISOString();
     await db.execute(
       `INSERT INTO tasks (uuid, title, note, date, time, priority, completed, created_at, updated_at, is_deleted, is_future_note) 
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 0, $10)`,
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 0, $10)
+       ON CONFLICT(uuid) DO UPDATE SET
+         title = excluded.title,
+         note = excluded.note,
+         date = excluded.date,
+         time = excluded.time,
+         priority = excluded.priority,
+         completed = excluded.completed,
+         created_at = excluded.created_at,
+         updated_at = excluded.updated_at,
+         is_deleted = excluded.is_deleted,
+         is_future_note = excluded.is_future_note
+       WHERE excluded.updated_at >= tasks.updated_at`,
       [
         uuid,
         t.title.trim(),

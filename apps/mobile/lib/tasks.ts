@@ -1,7 +1,7 @@
 import { eq, and, desc, asc, sql } from "drizzle-orm";
 import { tasks as tasksTable } from "./schema";
 import { getDb } from "./db";
-import { scheduleTaskAlarm, cancelTaskAlarm } from "./alarm";
+import { scheduleTaskAlarm, cancelTaskAlarm, rescheduleAllAlarms } from "./alarm";
 import type { Task, NewTask, UpdateTaskInput, SyncTask } from "@cluanote/shared";
 
 /**
@@ -539,23 +539,53 @@ export async function importTasksFromJson(jsonData: string): Promise<number> {
   let count = 0;
   for (const t of taskList) {
     if (!t.title || !t.date) continue;
-    const uuid = t.uuid || (typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID() : `task-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`);
+    const uuid =
+      t.uuid ||
+      (typeof crypto !== "undefined" && crypto.randomUUID
+        ? crypto.randomUUID()
+        : `task-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`);
     const nowIso = new Date().toISOString();
 
-    await db.insert(tasksTable).values({
-      uuid,
-      title: t.title.trim(),
-      note: t.note ? t.note.trim() : null,
-      date: t.date,
-      time: t.time || null,
-      priority: t.priority || "medium",
-      completed: t.completed || 0,
-      created_at: t.created_at || nowIso,
-      updated_at: t.updated_at || nowIso,
-      is_deleted: 0,
-      is_future_note: (t as Task & { is_future_note?: number }).is_future_note ?? 0,
-    });
+    await db
+      .insert(tasksTable)
+      .values({
+        uuid,
+        title: t.title.trim(),
+        note: t.note ? t.note.trim() : null,
+        date: t.date,
+        time: t.time || null,
+        priority: t.priority || "medium",
+        completed: t.completed || 0,
+        created_at: t.created_at || nowIso,
+        updated_at: t.updated_at || nowIso,
+        is_deleted: 0,
+        is_future_note: (t as Task & { is_future_note?: number }).is_future_note ?? 0,
+      })
+      .onConflictDoUpdate({
+        target: tasksTable.uuid,
+        set: {
+          title: sql`excluded.title`,
+          note: sql`excluded.note`,
+          date: sql`excluded.date`,
+          time: sql`excluded.time`,
+          priority: sql`excluded.priority`,
+          completed: sql`excluded.completed`,
+          created_at: sql`excluded.created_at`,
+          updated_at: sql`excluded.updated_at`,
+          is_deleted: sql`excluded.is_deleted`,
+          is_future_note: sql`excluded.is_future_note`,
+        },
+        where: sql`excluded.updated_at >= ${tasksTable.updated_at}`,
+      });
     count++;
   }
+
+  try {
+    const all = await getAllTasks();
+    await rescheduleAllAlarms(all);
+  } catch (err) {
+    console.warn("Failed to reschedule alarms after backup import:", err);
+  }
+
   return count;
 }
