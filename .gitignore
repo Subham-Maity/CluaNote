@@ -4,6 +4,7 @@
 /RULE.md
 /TASK.md
 RULE-*.md
+!RULE-Contributor.md
 
 # Logs
 logs
