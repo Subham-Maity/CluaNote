@@ -1,0 +1,141 @@
+version: 2
+updates:
+  # Root workspace npm packages
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+      - "automated"
+    commit-message:
+      prefix: "chore"
+      include: "scope"
+    groups:
+      dev-tooling:
+        patterns:
+          - "typescript"
+          - "turbo"
+          - "pnpm"
+
+  # Desktop app npm packages
+  - package-ecosystem: "npm"
+    directory: "/apps/desktop"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+      - "desktop"
+      - "automated"
+    commit-message:
+      prefix: "chore(desktop)"
+    groups:
+      tauri:
+        patterns:
+          - "@tauri-apps/*"
+      react:
+        patterns:
+          - "react"
+          - "react-dom"
+          - "@types/react*"
+      vite-tailwind:
+        patterns:
+          - "vite"
+          - "tailwindcss"
+          - "@tailwindcss/*"
+          - "@vitejs/*"
+
+  # Mobile app npm packages
+  - package-ecosystem: "npm"
+    directory: "/apps/mobile"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+      - "mobile"
+      - "automated"
+    commit-message:
+      prefix: "chore(mobile)"
+    groups:
+      expo-core:
+        patterns:
+          - "expo"
+          - "expo-*"
+          - "babel-preset-expo"
+      react-native:
+        patterns:
+          - "react-native"
+          - "react-native-*"
+      drizzle:
+        patterns:
+          - "drizzle-orm"
+          - "drizzle-kit"
+
+  # Shared package npm packages
+  - package-ecosystem: "npm"
+    directory: "/packages/shared"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 3
+    labels:
+      - "dependencies"
+      - "shared"
+      - "automated"
+    commit-message:
+      prefix: "chore(shared)"
+
+  # Desktop Tauri Rust dependencies
+  - package-ecosystem: "cargo"
+    directory: "/apps/desktop/src-tauri"
+    schedule:
+      interval: "weekly"
+      day: "tuesday"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+      - "rust"
+      - "desktop"
+      - "automated"
+    commit-message:
+      prefix: "chore(desktop-rust)"
+    groups:
+      tauri:
+        patterns:
+          - "tauri"
+          - "tauri-*"
+
+  # Sync Server Rust dependencies
+  - package-ecosystem: "cargo"
+    directory: "/packages/rust-sync-server"
+    schedule:
+      interval: "weekly"
+      day: "tuesday"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+      - "rust"
+      - "sync-server"
+      - "automated"
+    commit-message:
+      prefix: "chore(sync-server)"
+
+  # GitHub Actions versions
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "wednesday"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+      - "ci"
+      - "automated"
+    commit-message:
+      prefix: "chore(ci)"

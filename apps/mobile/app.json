@@ -3,7 +3,7 @@
     "name": "CluaNote",
     "slug": "cluanote",
     "scheme": "cluanote",
-    "version": "0.4.7",
+    "version": "0.4.8",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "dark",
@@ -13,7 +13,7 @@
     },
     "android": {
       "package": "com.subhammaity.cluanote",
-      "versionCode": 6,
+      "versionCode": 7,
       "adaptiveIcon": {
         "backgroundColor": "#090d16",
         "foregroundImage": "./assets/android-icon-foreground.png",

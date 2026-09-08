@@ -88,35 +88,84 @@ jobs:
           releaseBody: |
             ## CluaNote ${{ github.ref_name }}
 
-            A fast, minimalist, dark glassmorphic desktop task planner built on Rust and WebView2.
+            Cross-platform task planner — desktop (Windows/macOS/Linux), Android & iOS — built on Rust + Expo.
+            Fast. Private. Offline-first. Free.
 
-            ### What's in this Release
+            ---
 
-            - **Day & Time Scheduling:** 7-day strip navigation, untimed Anytime tasks, and a vertical hourly timeline (06:00–23:00) with a live pulsating current-time indicator.
-            - **Local-First & Zero Latency:** Fast on-device SQLite persistence with optimistic UI updates. Zero cloud dependencies, zero telemetry, and 100% privacy.
-            - **Glassmorphic Dark Interface:** Frameless transparent window with Tailwind CSS v4 design tokens, ambient lighting, and native OS window vibrancy (`window-vibrancy`).
-            - **System Tray Icon:** Built-in system tray with click-to-focus and background quick menu (Show CluaNote / Quit).
-            - **Desktop Notifications:** Native OS notification reminders when new tasks are scheduled.
-            - **Launch on Startup:** Optional autostart toggle on boot via `tauri-plugin-autostart`.
-            - **Window Controls & Native Zoom:** Full title bar drag support, double-click maximize/restore, multi-edge resizing, and native WebView zoom (<kbd>Ctrl</kbd> + <kbd>+</kbd> / <kbd>-</kbd> / <kbd>0</kbd>).
+            ### What is New in ${{ github.ref_name }}
 
-            ### Downloads
+            - **feat:** Full cross-platform coverage — Windows, macOS, Linux, Android, iOS
+            - **feat:** Bidirectional PostgreSQL sync across all devices (Neon, Supabase, self-hosted)
+            - **feat:** Background auto-sync with concurrency lock — no duplicate sync races
+            - **feat:** Real-time screen refresh on Today, History, and Kanban after every sync
+            - **feat:** Soft-delete propagation — deletions replicate across all synced devices
+            - **feat:** Kanban board — To-Do, In Progress, Done columns with Push to Event
+            - **feat:** Task alarms — exact-time Android/iOS notifications with custom audio
+            - **feat:** Yesterday reminder banner — resolve missed tasks without leaving Today view
+            - **feat:** History view — Pending / Not Done / Done tabs, expandable rows with jump-to-date
+            - **feat:** Backup & restore — export/import JSON, portable across platforms
+            - **feat:** System tray (desktop) — close-to-tray keeps alarms running
+            - **feat:** Auto-start (desktop) — registers as login item on Windows/macOS/Linux
+            - **feat:** In-app update checker (desktop) — one GET to public GitHub API, no data sent
+            - **feat:** Changelog modal — release history visible in-app
+            - **fix:** NullPointerException on Android SQLite when sync runs on active connection
+            - **fix:** History list rendering truncation on Android (SectionList layout)
+            - **fix:** Sync concurrency — added isSyncRunning lock to prevent overlapping fetches
+            - **chore:** Dependabot enabled — npm, Cargo, and GitHub Actions updated weekly
+            - **docs:** README rewritten with cross-platform comparison, sync architecture, competitor table
 
-            | Platform | Package | Description |
-            |---|---|---|
-            | **Windows** | `cluanote_*_x64-setup.exe` | NSIS installer (recommended) |
-            | **Windows** | `cluanote_*_x64_en-US.msi` | Windows Installer (MSI) |
-            | **macOS (Apple Silicon)** | `cluanote_*_aarch64.dmg` | M1 / M2 / M3 / M4 Macs |
-            | **macOS (Intel)** | `cluanote_*_x64.dmg` | Intel-based Macs |
-            | **Linux** | `cluanote_*_amd64.AppImage` | Universal standalone Linux bundle |
-            | **Linux** | `cluanote_*_amd64.deb` | Debian / Ubuntu package |
-            | **Android** | `cluanote-mobile.apk` | Standalone Android APK (Phones & Tablets) |
-            | **Sync Server** | `cluanote-sync-server-*` | Headless sync daemon (Linux / macOS / Windows) |
+            ---
+
+            ### Asset Reference
+
+            | File | Platform | Arch | Notes |
+            |---|---|---|---|
+            | `cluanote_*_x64-setup.exe` | Windows | x64 | NSIS installer — recommended |
+            | `cluanote_*_x64_en-US.msi` | Windows | x64 | Windows Installer (MSI) |
+            | `cluanote_*_aarch64.dmg` | macOS | ARM64 | M1 / M2 / M3 / M4 |
+            | `cluanote_*_x64.dmg` | macOS | x64 | Intel Macs |
+            | `cluanote_*_amd64.AppImage` | Linux | x64 | Any distro with FUSE / libfuse2 |
+            | `cluanote_*_amd64.deb` | Linux | x64 | Debian, Ubuntu, Mint, Pop!\_OS |
+            | `cluanote_*_x86_64.rpm` | Linux | x64 | Fedora, RHEL, CentOS, openSUSE |
+            | `cluanote-mobile.apk` | Android | arm64 | Android 8.0+ (API 26+) |
+            | `cluanote-sync-server-linux` | Linux | x64 | Self-hosted sync daemon binary |
+            | `cluanote-sync-server-macos` | macOS | x64 + ARM | Self-hosted sync daemon binary |
+            | `cluanote-sync-server-windows.exe` | Windows | x64 | Self-hosted sync daemon binary |
+
+            ---
+
+            ### Linux Distro Compatibility
+
+            | Package | Compatible Distros |
+            |---|---|
+            | `.AppImage` | Ubuntu 20.04+, Fedora 36+, Arch Linux, Manjaro, openSUSE Tumbleweed — requires FUSE (`libfuse2` on older distros) |
+            | `.deb` | Ubuntu 20.04+, Debian 11 (Bullseye)+, Linux Mint 20+, Pop!\_OS 20.04+ |
+            | `.rpm` | Fedora 36+, RHEL 9+, CentOS Stream 9+, openSUSE Leap 15.4+ |
+
+            > **Linux transparency:** Glassmorphic background requires a compositor (picom, KWin, Mutter, Hyprland, Compton, etc.). Without one, background renders as opaque solid color.
+
+            ---
 
             ### Requirements
-            - **Windows:** WebView2 Runtime (included in Windows 10 & 11)
-            - **macOS:** macOS 10.15+
-            - **Linux:** Desktop compositor for native glass transparency
+
+            | Platform | Requirement |
+            |---|---|
+            | Windows | WebView2 Runtime — pre-installed on Windows 10 21H2+ and Windows 11 |
+            | macOS | macOS 10.15 Catalina or later |
+            | Linux | WebKitGTK 4.1 + desktop compositor for transparency |
+            | Android | Android 8.0 (API 26) or later |
+            | iOS | Build from source via Expo CLI + Xcode |
+
+            ---
+
+            ### Configuring Sync (Optional)
+
+            1. Create a free PostgreSQL DB on [Neon](https://neon.tech) or [Supabase](https://supabase.com)
+            2. Copy the connection string
+            3. Open CluaNote → Settings → Sync → paste string → Save & Sync
+            4. Install on other devices, paste same string
+            5. Tasks sync bidirectionally in the background automatically
           releaseDraft: false
           prerelease: false
           args: ${{ matrix.args }}
