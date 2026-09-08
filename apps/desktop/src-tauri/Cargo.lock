@@ -691,7 +691,7 @@ dependencies = [
 
 [[package]]
 name = "cluanote"
-version = "0.4.5"
+version = "0.4.6"
 dependencies = [
  "aes-gcm",
  "chrono",
@@ -4932,9 +4932,9 @@ dependencies = [
 
 [[package]]
 name = "tauri-plugin-notification"
-version = "2.3.3"
+version = "2.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "01fc2c5ff41105bd1f7242d8201fdf3efd70749b82fa013a17f2126357d194cc"
+checksum = "ad2fd40946aef810c4be9fd33a2d1b9b397cb79042b2d21c81a0a8f204354fd1"
 dependencies = [
  "log",
  "notify-rust",
@@ -4951,9 +4951,9 @@ dependencies = [
 
 [[package]]
 name = "tauri-plugin-opener"
-version = "2.5.4"
+version = "2.5.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "17e1bea14edce6b793a04e2417e3fd924b9bc4faae83cdee7d714156cceeed29"
+checksum = "60d60366174b745b4ef5824b8bbc1c457fd08f0ce101ff643c0a49181a9f4e91"
 dependencies = [
  "dunce",
  "glob",
@@ -4973,9 +4973,9 @@ dependencies = [
 
 [[package]]
 name = "tauri-plugin-sql"
-version = "2.4.0"
+version = "2.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cbbdb4f17a7984ef0aa425b11e543a44d11f2fddbdee3fc61970091f8adfb914"
+checksum = "c07f5bc394e2137654f05d96994ea1ed3cbee7cef64be4ddd0ec8788c591f1bc"
 dependencies = [
  "futures-core",
  "indexmap 2.14.0",
