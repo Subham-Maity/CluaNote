@@ -1,126 +1,266 @@
 # CluaNote
 
-<img width="708" height="489" alt="ss" src="https://github.com/user-attachments/assets/00795cf1-514f-46af-a459-77c0d93b06cb" />
+<img width="708" height="489" alt="CluaNote Desktop" src="https://github.com/user-attachments/assets/00795cf1-514f-46af-a459-77c0d93b06cb" />
 
+> **A cross-platform task planner — desktop, Android & iOS — built on Rust + Expo. Fast, private, offline-first, and free.**
 
-
-**A native desktop task planner built on Rust. Fast, private, and free.**
-
-[![Build](https://github.com/Subham-Maity/CluaNote/actions/workflows/build.yml/badge.svg)](https://github.com/Subham-Maity/CluaNote/actions/workflows/build.yml)
+[![Desktop Build](https://github.com/Subham-Maity/CluaNote/actions/workflows/build.yml/badge.svg)](https://github.com/Subham-Maity/CluaNote/actions/workflows/build.yml)
+[![Android Build](https://github.com/Subham-Maity/CluaNote/actions/workflows/mobile-android.yml/badge.svg)](https://github.com/Subham-Maity/CluaNote/actions/workflows/mobile-android.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](./LICENSE)
-[![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey)](https://github.com/Subham-Maity/CluaNote/releases)
+[![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux%20%7C%20Android%20%7C%20iOS-lightgrey)](https://github.com/Subham-Maity/CluaNote/releases)
 [![Release](https://img.shields.io/github/v/release/Subham-Maity/CluaNote)](https://github.com/Subham-Maity/CluaNote/releases/latest)
 
 ---
 
-## Features
+## What Problem Does CluaNote Solve
 
-**Day and time planning**
-Navigate by week on a 7-day strip. Place tasks on a scrollable 06:00–23:00 hourly timeline or drop them in the Anytime section when the exact time doesn't matter. A live indicator marks the current hour.
+Most task management apps force you to choose between convenience and privacy. Cloud-first apps (Todoist, TickTick, Notion, Any.do) store your tasks on their servers, require subscriptions for cross-device sync, and your data disappears if they shut down. Local-only apps lose data when you switch devices.
 
-**Task management**
-Create, edit, complete, and delete tasks. Set priority (low, medium, high) and attach optional notes. All changes hit SQLite immediately with optimistic UI updates — no loading spinners between actions.
+CluaNote answers a different question: **what if you owned your data AND synced across all your devices for free?**
 
-**Task alarms**
-Attach an alarm time to any task. The app checks every 10 seconds and fires a floating notification banner with a Stop button when a task is due. A glowing indicator on the bell icon shows when alarms are enabled. The alarm checker keeps running in the background even when the window is hidden.
+```
+Your tasks → Your SQLite database → Your PostgreSQL → All your devices
+                                    (Neon, Supabase,
+                                     any provider)
+```
 
-**Pending, Not Done, and Completed history**
-Three navbar icons give you a full view of your task history. Pending shows overdue and incomplete tasks grouped by date. Not Done lists tasks you explicitly marked as missed. Completed shows everything you finished. Click any task row to expand its full details — date, time, priority, and note. Hover to reveal action buttons: Jump navigates the calendar to that date, and you can change status or delete without opening the task.
-
-**Future notes and Kanban board**
-A CREATE button (stacked above the main + button) opens a note form for things you want to plan but haven't scheduled yet. Future notes don't appear in the daily timeline — they live in a separate full-screen Kanban board accessible from the navbar. Drag cards between To-Do, In Progress, and Done columns. When a note is ready to become a real event, Push to Event converts it and jumps the calendar to its target date.
-
-**Yesterday reminder**
-If you have unresolved tasks from yesterday, a dismissible banner appears at the top of the app when you open it. You can mark each one done or not done directly from the banner without navigating away.
-
-**Cross-device sync**
-Sync is optional and self-hosted. Point the app at your own PostgreSQL instance and it will bidirectionally sync tasks in the background. The sync payload is AES-256 encrypted before it leaves the device. Conflict resolution uses the `updated_at` timestamp. The app works fully offline if no database URL is configured.
-
-**Backup and restore**
-Export all tasks to a JSON file at any time. Import from a backup to restore — existing data is preserved.
-
-**System tray**
-Closing the window hides the app rather than quitting it. A tray icon lets you bring the window back or quit from the context menu. Alarms continue firing while the app is in the tray.
-
-**Auto-start**
-An option in settings registers the app as a login item so it starts with the system.
-
-**Update checker**
-On startup the app silently checks GitHub Releases for a newer version. If one is found, a banner appears with the version number and a link to the release page. No data is sent — it's a plain HTTP GET to the public API.
-
-**Release notes**
-A changelog modal in the navbar shows the release history for the current version.
-
-**Glassmorphic dark UI**
-Translucent glass panels, ambient radial lighting, and a custom frameless title bar with drag, minimize, maximize, and close-to-tray controls. Built with Tailwind CSS v4 and a hand-written dark design system.
+No monthly fee. No vendor lock-in. No account required. Sync is optional and points at a database you control.
 
 ---
 
-## Why CluaNote
+## Platform Coverage
 
-Most productivity apps are Electron wrappers shipping 200MB of Chromium and Node.js just to render a to-do list. They phone home, store your tasks in the cloud, and charge a subscription for the privilege.
-
-CluaNote is different. It is built on [Tauri](https://v2.tauri.app/) — a Rust-powered application framework that uses the OS-native webview instead of bundling a browser. The result is a binary under 12MB that starts in under 500 milliseconds, uses a fraction of the RAM of comparable tools, and keeps every byte of your data in a local SQLite database that you own.
-
-No account. No telemetry. No cost. Sync is **optional** and self-hosted.
-
----
-
-
-## Why Rust / Tauri Over Electron
-
-| | CluaNote (Tauri + Rust) | Typical Electron App |
+| Platform | Status | Download |
 |---|---|---|
-| **Binary size** | ~12 MB | 150–250 MB |
-| **Memory at idle** | ~4–7 MB RAM | 200–400 MB RAM |
-| **Cold start** | < 500ms | 2–5 seconds |
-| **Bundled runtime** | OS-native WebView | Full Chromium |
-| **Data storage** | Local SQLite, on-device | Cloud or opaque local |
-| **Backend language** | Rust (memory-safe, no GC) | Node.js (garbage collected) |
-| **Supply chain** | Minimal Cargo crates | Thousands of npm packages |
+| Windows (x64) | ◎ Stable | [Latest Release](https://github.com/Subham-Maity/CluaNote/releases/latest) |
+| macOS (Apple Silicon) | ◎ Stable | [Latest Release](https://github.com/Subham-Maity/CluaNote/releases/latest) |
+| macOS (Intel) | ◎ Stable | [Latest Release](https://github.com/Subham-Maity/CluaNote/releases/latest) |
+| Linux (AppImage / .deb) | ◎ Stable | [Latest Release](https://github.com/Subham-Maity/CluaNote/releases/latest) |
+| Android (.apk) | ◎ Stable | [Latest Release](https://github.com/Subham-Maity/CluaNote/releases/latest) |
+| iOS | ◎ Stable | Build from source |
 
-Rust's ownership model eliminates entire classes of bugs — use-after-free, data races, null pointer dereferences — at compile time. There is no garbage collector pausing the UI thread. The Tauri security model gates every frontend-to-backend call through an explicit capability manifest, so the web layer cannot call arbitrary system APIs.
+---
+
+## Why CluaNote Beats Every Market Alternative
+
+### ⇨ Performance That Apps Like Notion & Todoist Cannot Match
+
+| Metric | CluaNote (Desktop) | Electron Apps | Notion / Web Apps |
+|---|---|---|---|
+| Binary size | ~12 MB | 150–250 MB | N/A (browser) |
+| RAM at idle | ~4–7 MB | 200–400 MB | 300–800 MB |
+| Cold start | < 500ms | 2–5 seconds | 3–8 seconds |
+| Runtime bundled | OS-native WebView | Full Chromium | Browser engine |
+| Works offline | → Fully | → Limited | × Requires internet |
+| Data ownership | → 100% local | × Cloud default | × Their servers |
+
+### ⇨ Sync Architecture No Other Free App Offers
+
+Most free apps give you: one device. Pay for sync.
+
+CluaNote gives you bidirectional sync across every device you own by connecting to any PostgreSQL-compatible database — free tiers from Neon or Supabase cover hundreds of tasks with zero cost.
+
+```
+Desktop (Windows/macOS/Linux)
+         ↓ ↑ bidirectional, conflict-resolved
+PostgreSQL (Neon / Supabase / self-hosted)
+         ↓ ↑ bidirectional, conflict-resolved
+Mobile (Android / iOS)
+```
+
+→ Conflict resolution uses `updated_at` timestamps — the newest write always wins  
+→ Sync runs in the background automatically; manual sync available on demand  
+→ App works fully offline if no database is configured  
+→ Zero data passes through any CluaNote server — the connection is direct device ↔ your database  
+
+---
+
+## Feature Reference
+
+### ◎ Task Planning & Calendar
+
+- » 7-day week strip with swipe navigation — tap any day to jump to it
+- » Scrollable 06:00–23:00 hourly timeline with live current-hour indicator
+- » Anytime section for tasks without a specific time
+- » Yesterday reminder banner — resolve missed tasks without navigating away
+- » Priority levels: Low, Medium, High — color-coded throughout the UI
+
+### ◎ Task Lifecycle
+
+- » Create, edit, complete, delete with optimistic UI — zero loading spinners
+- » Three completion states: Pending → Done / Not Done (explicitly marked as missed)
+- » Attach rich-text notes to any task
+- » Alarm system with floating in-app banner and stop control
+- » Alarm continues firing even when the window is hidden (desktop tray mode)
+
+### ◎ History & Analytics View
+
+- » Pending tab — all unresolved tasks grouped by date descending
+- » Not Done tab — tasks you marked as explicitly missed
+- » Done tab — full completed history
+- » Expand any history row → see full details, change status, delete, or jump to that date
+- » Pull-to-refresh on mobile; reload button on desktop
+
+### ◎ Kanban Board (Future Notes)
+
+- » Separate idea-capture layer that doesn't pollute the daily timeline
+- » Three columns: To-Do ¦ In Progress ¦ Done
+- » Drag cards between columns on desktop; tap-to-move on mobile
+- » Push to Event converts a Kanban note into a scheduled task and jumps the calendar to it
+
+### ◎ Cross-Device Sync — Self-Hosted PostgreSQL
+
+- » Point app at any PostgreSQL-compatible connection string (Neon, Supabase, Railway, self-hosted)
+- » Bidirectional merge: new tasks pull in, local-only tasks push out
+- » Background auto-sync every 30 seconds in foreground; fires on app-active event
+- » Conflict resolution: `updated_at` wins — no manual merge required
+- » Soft-delete tombstones propagate deletes across all devices
+- » Instant screen refresh on all tabs (Today, History, Kanban) on sync completion
+- » No CluaNote server involved — direct connection to your database
+
+### ◎ Alarms & Notifications (Mobile)
+
+- » Native Android & iOS notification permissions
+- » Exact-time alarms with floating in-app banner override
+- » Custom alarm sound — pick any audio file from device storage
+- » Default chime included; alarm toggle in settings
+- » Reschedule All button re-syncs all upcoming task alarms in one tap
+- » Alarms auto-reschedule after every sync cycle
+
+### ◎ Backup & Restore
+
+- » Export all tasks to a portable JSON file at any time
+- » Import restores without overwriting newer local data
+- » Backup file is human-readable and portable to any future tool
+
+### ◎ Desktop Extras
+
+- » System tray: close-to-tray keeps alarms running
+- » Auto-start: registers as login item (Windows, macOS, Linux)
+- » Frameless window with custom drag, minimize, maximize, and tray controls
+- » Glassmorphic dark UI — translucent panels, radial ambient lighting
+
+### ◎ Privacy & Updates
+
+- » Zero telemetry, zero analytics, zero crash reporting
+- » Startup update checker: plain GET to public GitHub API — no payload sent
+- » Changelog modal in-app for every release
+- » MIT licensed — read, modify, self-host
+
+---
+
+## How Sync Works — Technical Detail
+
+```
+1. Device reads all local tasks (uuid, updated_at, is_deleted)
+2. Device fetches all remote tasks from PostgreSQL
+3. Reconcile:
+   → remote has uuid local doesn't → pull
+   → remote updated_at > local updated_at → pull (overwrite)
+   → local updated_at > remote updated_at → push (upsert)
+4. Soft-deletes (is_deleted = 1) propagate across all devices
+5. DeviceEventEmitter fires → Today, History, Kanban screens reload instantly
+```
+
+No server-side logic required. The conflict resolution runs entirely on-device in pure TypeScript against the PostgreSQL HTTP API (Neon serverless driver). Works through firewalls and NAT without port forwarding.
+
+---
+
+## CluaNote vs Competitors at a Glance
+
+| Feature | CluaNote | Todoist | TickTick | Notion | Any.do |
+|---|---|---|---|---|---|
+| Free cross-device sync | → Yes | × Paid | × Paid | × Limited | × Paid |
+| Data stored locally | → Yes | × Cloud | × Cloud | × Cloud | × Cloud |
+| Open source | → MIT | × Closed | × Closed | × Closed | × Closed |
+| Works fully offline | → Yes | → Partial | → Partial | × No | × No |
+| Self-hosted sync | → Yes | × No | × No | × No | × No |
+| No account required | → Yes | × Required | × Required | × Required | × Required |
+| Subscription cost | → Free | $5–$8/mo | $3–$8/mo | $8–$16/mo | $3–$5/mo |
+| Desktop + mobile | → Yes | → Yes | → Yes | → Yes | → Yes |
+| Kanban board | → Yes | → Yes | → Yes | → Yes | × No |
+| Task alarms (exact time) | → Yes | → Limited | → Yes | × No | → Yes |
+| Native performance | → Rust/Native | × Electron | × Flutter/Web | × Electron | × Web |
 
 ---
 
 ## Tech Stack
 
+### Desktop (Windows · macOS · Linux)
+
 | Layer | Technology |
 |---|---|
-| Application shell | [Tauri v2](https://v2.tauri.app/) |
-| Backend language | Rust 1.98+ (Stable) |
-| Frontend framework | React 19 + TypeScript |
+| Application shell | Tauri v2 (Rust) |
+| Backend | Rust 1.98+ Stable |
+| Frontend | React 19 + TypeScript |
 | Build tool | Vite 7 |
-| Styling | Tailwind CSS v4 (CSS-first, no config file) |
+| Styling | Tailwind CSS v4 |
 | Local database | SQLite via `tauri-plugin-sql` |
-| Date utilities | `date-fns` |
+| Date library | `date-fns` |
+
+### Mobile (Android · iOS)
+
+| Layer | Technology |
+|---|---|
+| Framework | Expo SDK 57 (React Native 0.86) |
+| Router | Expo Router v4 |
+| Styling | NativeWind v4 (Tailwind for RN) |
+| Local database | Expo SQLite (native async driver) |
+| Notifications | Expo Notifications (exact alarms) |
+| Background sync | Expo Background Task + App State |
+| Fonts | Google Fonts Inter via Expo |
+
+### Shared
+
+| Layer | Technology |
+|---|---|
+| Monorepo tooling | pnpm workspaces + Turborepo |
+| Shared types | `@cluanote/shared` TypeScript package |
+| Sync transport | PostgreSQL HTTP (Neon serverless driver) |
+| Conflict resolution | `updated_at` timestamp — device-side merge |
 
 ---
 
 ## Installation
 
-Download the latest release for your platform from the [Releases page](https://github.com/Subham-Maity/CluaNote/releases/latest).
+### Desktop
+
+Download the latest release from [GitHub Releases](https://github.com/Subham-Maity/CluaNote/releases/latest):
 
 | Platform | File |
 |---|---|
-| Windows | `cluanote_*_x64-setup.exe` (NSIS) or `cluanote_*_x64_en-US.msi` |
+| Windows | `cluanote_*_x64-setup.exe` or `cluanote_*_x64_en-US.msi` |
 | macOS (Apple Silicon) | `cluanote_*_aarch64.dmg` |
 | macOS (Intel) | `cluanote_*_x64.dmg` |
 | Linux | `cluanote_*_amd64.AppImage` or `cluanote_*_amd64.deb` |
 
-**Windows note:** WebView2 Runtime is required. It ships pre-installed on Windows 10 (21H2+) and Windows 11.
+» Windows: WebView2 Runtime is required — pre-installed on Windows 10 21H2+ and Windows 11  
+» Linux: Transparency requires a compositor (picom, KWin, Mutter, etc.)
 
-**Linux note:** Transparency requires a compositor (picom, KWin, Mutter, etc.). Without one, the background renders as an opaque solid color.
+### Android
+
+Download `cluanote-mobile.apk` from [GitHub Releases](https://github.com/Subham-Maity/CluaNote/releases/latest).  
+Enable "Install from unknown sources" in Android settings, then install the APK directly.
+
+### iOS
+
+Build from source using Expo CLI:
+
+```bash
+git clone https://github.com/Subham-Maity/CluaNote.git
+cd CluaNote
+npm install
+cd apps/mobile
+npx expo run:ios
+```
 
 ---
 
 ## Building From Source
 
-**Prerequisites**
+### Desktop
 
-- [Rust](https://www.rust-lang.org/tools/install) (stable channel)
-- [Node.js](https://nodejs.org/) v20 or later
-- OS WebView runtime (WebView2 on Windows, WebKit on macOS, WebKitGTK 4.1 on Linux)
+Prerequisites: [Rust](https://www.rust-lang.org/tools/install) stable · Node.js v20+ · OS WebView runtime
 
 **Linux system dependencies (Ubuntu/Debian)**
 
@@ -130,32 +270,53 @@ sudo apt-get install -y \
   libayatana-appindicator3-dev librsvg2-dev
 ```
 
-**Development server**
+```bash
+npm install
+npm run tauri dev       # development
+npm run tauri build     # production — bundles to src-tauri/target/release/bundle/
+```
+
+### Mobile
+
+Prerequisites: Node.js v20+ · Android Studio (for Android) · Xcode (for iOS)
 
 ```bash
 npm install
-npm run tauri dev
+cd apps/mobile
+npx expo run:android    # Android
+npx expo run:ios        # iOS
 ```
-
-**Production build**
-
-```bash
-npm run tauri build
-```
-
-Installer bundles are written to `src-tauri/target/release/bundle/`.
 
 ---
 
-## Data and Privacy
+## Configuring Sync
 
-CluaNote stores all task data in a single SQLite file on your local machine. The default location follows the OS convention for application data:
+1. Create a free PostgreSQL database on [Neon](https://neon.tech) or [Supabase](https://supabase.com)
+2. Copy the connection string (format: `postgresql://user:pass@host/db?sslmode=require`)
+3. Open CluaNote → Settings → Sync → paste the connection string → Save & Sync
+4. Install CluaNote on your other devices and paste the same connection string
+5. Tasks sync bidirectionally, automatically, in the background
 
-- **Windows:** `%APPDATA%\com.subhammaity.cluanote\cluanote.db`
-- **macOS:** `~/Library/Application Support/com.subhammaity.cluanote/cluanote.db`
-- **Linux:** `~/.local/share/com.subhammaity.cluanote/cluanote.db`
+The app creates the `cluanote_tasks` table on first sync. No manual schema setup required.
 
-No data is ever transmitted to any server. There are no analytics, crash reporters, or update checkers.
+---
+
+## Data & Privacy
+
+CluaNote stores all task data locally in a single SQLite file:
+
+| Platform | Default database path |
+|---|---|
+| Windows | `%APPDATA%\com.subhammaity.cluanote\cluanote.db` |
+| macOS | `~/Library/Application Support/com.subhammaity.cluanote/cluanote.db` |
+| Linux | `~/.local/share/com.subhammaity.cluanote/cluanote.db` |
+| Android | App-private SQLite (Expo SQLite) |
+| iOS | App-private SQLite (Expo SQLite) |
+
+→ Zero data transmitted to any CluaNote server  
+→ No analytics, no crash reporters  
+→ Sync traffic goes directly from your device to your own database  
+→ Update check = one plain GET request to the public GitHub API  
 
 ---
 
@@ -167,8 +328,8 @@ MIT — see [LICENSE](./LICENSE) for the full text.
 
 ## Author
 
-Built by [Subham Maity](https://github.com/Subham-Maity).
+Built by [Subham Maity](https://github.com/Subham-Maity)
 
-- GitHub: [github.com/Subham-Maity](https://github.com/Subham-Maity)
-- Twitter / X: [x.com/TheSubhamMaity](https://x.com/TheSubhamMaity)
-- Instagram: [instagram.com/subham_xam](https://www.instagram.com/subham_xam/)
+» GitHub → [github.com/Subham-Maity](https://github.com/Subham-Maity)  
+» Twitter / X → [x.com/TheSubhamMaity](https://x.com/TheSubhamMaity)  
+» Instagram → [instagram.com/subham_xam](https://www.instagram.com/subham_xam/)
