@@ -1,5 +1,12 @@
-import React, { useState, useCallback } from "react";
-import { View, Text, TouchableOpacity, useWindowDimensions, Platform } from "react-native";
+import React, { useState, useCallback, useEffect } from "react";
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  useWindowDimensions,
+  Platform,
+  DeviceEventEmitter,
+} from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
 import * as Haptics from "expo-haptics";
@@ -18,20 +25,23 @@ import type { Task } from "@cluanote/shared";
 
 type TabSegment = "pending" | "not_done" | "completed";
 
+interface TaskStore {
+  pending: Task[];
+  not_done: Task[];
+  completed: Task[];
+}
+
 export default function HistoryScreen() {
   const router = useRouter();
   const { width } = useWindowDimensions();
   const isTablet = width > 768;
   const [segment, setSegment] = useState<TabSegment>("pending");
-  const [tasks, setTasks] = useState<Task[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
-
-  // Counts for each segment
-  const [counts, setCounts] = useState({
-    pending: 0,
-    not_done: 0,
-    completed: 0,
+  const [taskStore, setTaskStore] = useState<TaskStore>({
+    pending: [],
+    not_done: [],
+    completed: [],
   });
+  const [isLoading, setIsLoading] = useState(false);
 
   const loadData = useCallback(async () => {
     setIsLoading(true);
@@ -42,25 +52,17 @@ export default function HistoryScreen() {
         getCompletedTasks(),
       ]);
 
-      setCounts({
-        pending: pendingList.length,
-        not_done: notDoneList.length,
-        completed: completedList.length,
+      setTaskStore({
+        pending: pendingList,
+        not_done: notDoneList,
+        completed: completedList,
       });
-
-      if (segment === "pending") {
-        setTasks(pendingList);
-      } else if (segment === "not_done") {
-        setTasks(notDoneList);
-      } else {
-        setTasks(completedList);
-      }
     } catch (err) {
       console.error("Failed to load history tasks:", err);
     } finally {
       setIsLoading(false);
     }
-  }, [segment]);
+  }, []);
 
   useFocusEffect(
     useCallback(() => {
@@ -68,12 +70,21 @@ export default function HistoryScreen() {
     }, [loadData])
   );
 
+  // Listen for sync completion events to automatically refresh
+  useEffect(() => {
+    const sub = DeviceEventEmitter.addListener(
+      "CLUANOTE_SYNC_COMPLETED",
+      () => {
+        loadData();
+      }
+    );
+    return () => {
+      sub.remove();
+    };
+  }, [loadData]);
+
   const handleToggleComplete = async (task: Task) => {
-    // Optimistic removal from current list if not in completed segment
     const nextCompleted = task.completed === 1 ? 0 : 1;
-    if (segment !== "completed" && nextCompleted === 1) {
-      setTasks((prev) => prev.filter((t) => t.id !== task.id));
-    }
     try {
       await toggleComplete(task.id, nextCompleted === 1);
       await loadData();
@@ -84,16 +95,6 @@ export default function HistoryScreen() {
   };
 
   const handleSetStatus = async (task: Task, status: number) => {
-    // Optimistic removal if status doesn't match current segment
-    const willStayInSegment =
-      (segment === "pending" && status === 0) ||
-      (segment === "not_done" && status === 2) ||
-      (segment === "completed" && status === 1);
-
-    if (!willStayInSegment) {
-      setTasks((prev) => prev.filter((t) => t.id !== task.id));
-    }
-
     try {
       await setTaskStatus(task.id, status);
       await loadData();
@@ -104,7 +105,6 @@ export default function HistoryScreen() {
   };
 
   const handleDelete = async (task: Task) => {
-    setTasks((prev) => prev.filter((t) => t.id !== task.id));
     try {
       await deleteTask(task.id);
       await loadData();
@@ -119,6 +119,13 @@ export default function HistoryScreen() {
       pathname: "/",
       params: { date },
     });
+  };
+
+  const currentTasks = taskStore[segment] || [];
+  const counts = {
+    pending: taskStore.pending.length,
+    not_done: taskStore.not_done.length,
+    completed: taskStore.completed.length,
   };
 
   return (
@@ -203,16 +210,18 @@ export default function HistoryScreen() {
           </View>
 
           {/* Task History SectionList */}
-          <HistoryList
-            tasks={tasks}
-            segment={segment}
-            isLoading={isLoading}
-            onRefresh={loadData}
-            onToggleComplete={handleToggleComplete}
-            onSetStatus={handleSetStatus}
-            onDelete={handleDelete}
-            onJumpToDate={handleJumpToDate}
-          />
+          <View style={{ flex: 1 }}>
+            <HistoryList
+              tasks={currentTasks}
+              segment={segment}
+              isLoading={isLoading}
+              onRefresh={loadData}
+              onToggleComplete={handleToggleComplete}
+              onSetStatus={handleSetStatus}
+              onDelete={handleDelete}
+              onJumpToDate={handleJumpToDate}
+            />
+          </View>
         </View>
       </SafeAreaView>
     </LinearGradient>

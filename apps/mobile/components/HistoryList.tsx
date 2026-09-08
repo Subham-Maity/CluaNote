@@ -120,8 +120,13 @@ export const HistoryList: React.FC<HistoryListProps> = ({
 
   return (
     <SectionList
+      style={{ flex: 1 }}
+      className="flex-1"
       sections={sections}
-      keyExtractor={(item) => item.uuid || String(item.id)}
+      keyExtractor={(item, index) => item.uuid || `${item.id || index}-${index}`}
+      initialNumToRender={20}
+      maxToRenderPerBatch={20}
+      windowSize={10}
       refreshControl={
         <RefreshControl
           refreshing={isLoading}

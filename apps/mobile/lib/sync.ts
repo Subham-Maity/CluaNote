@@ -1,6 +1,6 @@
 import * as SecureStore from "expo-secure-store";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { AppState, type AppStateStatus } from "react-native";
+import { AppState, type AppStateStatus, DeviceEventEmitter } from "react-native";
 import * as BackgroundTask from "expo-background-task";
 import * as TaskManager from "expo-task-manager";
 import { getAllTasksForSync, batchUpsertFromSync, getAllTasks } from "./tasks";
@@ -184,6 +184,8 @@ export async function testSyncConnection(url: string): Promise<{ success: boolea
   }
 }
 
+let isSyncRunning = false;
+
 /**
  * Runs a complete bi-directional sync:
  * 1. Fetches latest remote tasks FIRST.
@@ -192,16 +194,28 @@ export async function testSyncConnection(url: string): Promise<{ success: boolea
  * 4. Reschedules upcoming active alarms.
  */
 export async function runPostgresSync(): Promise<SyncResult> {
-  const config = await getSyncConfig();
-  if (!config.url) {
-    throw new Error("No synchronization URL configured. Please configure your database in Settings.");
+  if (isSyncRunning) {
+    return {
+      success: true,
+      pushedCount: 0,
+      pulledCount: 0,
+      syncedAt: new Date().toISOString(),
+      message: "Sync is already in progress. Please wait a moment.",
+    };
   }
 
-  const url = config.url.trim();
-  const localTasks = await getAllTasksForSync();
-  const localMap = new Map<string, SyncTask>(localTasks.map((t) => [t.uuid, t]));
+  isSyncRunning = true;
+  try {
+    const config = await getSyncConfig();
+    if (!config.url) {
+      throw new Error("No synchronization URL configured. Please configure your database in Settings.");
+    }
 
-  let remoteTasks: SyncTask[] = [];
+    const url = config.url.trim();
+    const localTasks = await getAllTasksForSync();
+    const localMap = new Map<string, SyncTask>(localTasks.map((t) => [t.uuid, t]));
+
+    let remoteTasks: SyncTask[] = [];
 
   if (isNeonConnectionString(url)) {
     // 1. Ensure table schema exists on Neon PostgreSQL (individual DDL statements)
@@ -294,6 +308,10 @@ export async function runPostgresSync(): Promise<SyncResult> {
 
     const nowIso = new Date().toISOString();
     await AsyncStorage.setItem(LAST_SYNCED_AT_KEY, nowIso);
+    DeviceEventEmitter.emit("CLUANOTE_SYNC_COMPLETED", {
+      pushedCount: data.pushed_count || 0,
+      pulledCount: data.pulled_count || (data.pulled_tasks ? data.pulled_tasks.length : 0),
+    });
     return {
       success: true,
       pushedCount: data.pushed_count || 0,
@@ -393,6 +411,10 @@ export async function runPostgresSync(): Promise<SyncResult> {
 
   const nowIso = new Date().toISOString();
   await AsyncStorage.setItem(LAST_SYNCED_AT_KEY, nowIso);
+  DeviceEventEmitter.emit("CLUANOTE_SYNC_COMPLETED", {
+    pushedCount,
+    pulledCount: pulledTasks.length,
+  });
 
   return {
     success: true,
@@ -402,6 +424,9 @@ export async function runPostgresSync(): Promise<SyncResult> {
     syncedAt: nowIso,
     message: `Sync successful. Pushed ${pushedCount} task(s), pulled ${pulledTasks.length} task(s).`,
   };
+  } finally {
+    isSyncRunning = false;
+  }
 }
 
 // ----------------------------------------------------------------------------

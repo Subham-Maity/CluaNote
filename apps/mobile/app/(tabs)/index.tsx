@@ -6,6 +6,7 @@ import {
   RefreshControl,
   TouchableOpacity,
   useWindowDimensions,
+  DeviceEventEmitter,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
@@ -61,6 +62,20 @@ export default function TodayScreen() {
       refreshPendingState();
     }, [selectedDate, fetchTasks, refreshPendingState])
   );
+
+  // Refresh immediately when background or manual sync pulls changes
+  useEffect(() => {
+    const sub = DeviceEventEmitter.addListener(
+      "CLUANOTE_SYNC_COMPLETED",
+      () => {
+        fetchTasks(selectedDate);
+        refreshPendingState();
+      }
+    );
+    return () => {
+      sub.remove();
+    };
+  }, [selectedDate, fetchTasks, refreshPendingState]);
 
   const anytimeTasks = filterAnytimeTasks(tasks);
   const timedTasks = filterTimedTasks(tasks);

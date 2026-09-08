@@ -1,5 +1,5 @@
-import React, { useState, useCallback } from "react";
-import { View, Text, TouchableOpacity, Alert } from "react-native";
+import React, { useState, useCallback, useEffect } from "react";
+import { View, Text, TouchableOpacity, Alert, DeviceEventEmitter } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter, useFocusEffect } from "expo-router";
@@ -40,6 +40,15 @@ export default function KanbanScreen() {
       loadNotes();
     }, [loadNotes])
   );
+
+  useEffect(() => {
+    const sub = DeviceEventEmitter.addListener("CLUANOTE_SYNC_COMPLETED", () => {
+      loadNotes();
+    });
+    return () => {
+      sub.remove();
+    };
+  }, [loadNotes]);
 
   const handleCardPress = (task: Task) => {
     router.push({

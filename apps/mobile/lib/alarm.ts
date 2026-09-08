@@ -2,9 +2,7 @@ import * as Notifications from "expo-notifications";
 import { Platform } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { createAudioPlayer, type AudioPlayer } from "expo-audio";
-import { eq } from "drizzle-orm";
-import { getDb } from "./db";
-import { tasks as tasksTable } from "./schema";
+import { getExpoDb } from "./db";
 import type { Task } from "@cluanote/shared";
 
 export const ALARM_ENABLED_KEY = "cluanote_alarm_enabled";
@@ -130,10 +128,7 @@ export async function stopAlarmSound(): Promise<void> {
  * Returns notification ID if scheduled, or null if skipped.
  */
 export async function scheduleTaskAlarm(
-  task: Pick<Task, "id" | "uuid" | "title" | "note" | "date" | "time" | "completed"> & {
-    is_future_note?: number;
-    is_deleted?: number;
-  }
+  task: Partial<Task>
 ): Promise<string | null> {
   try {
     if (!task.time || !task.date) return null;
@@ -220,7 +215,7 @@ export async function rescheduleAllAlarms(tasks: Task[]): Promise<void> {
     const enabled = await isAlarmEnabled();
     if (!enabled) return;
 
-    const db = await getDb();
+    const expoDb = await getExpoDb();
     const nowIso = new Date().toISOString();
 
     for (const task of tasks) {
@@ -232,10 +227,10 @@ export async function rescheduleAllAlarms(tasks: Task[]): Promise<void> {
       ) {
         const notifId = await scheduleTaskAlarm(task);
         if (notifId && task.id) {
-          await db
-            .update(tasksTable)
-            .set({ notification_id: notifId, updated_at: nowIso })
-            .where(eq(tasksTable.id, task.id));
+          await expoDb.runAsync(
+            "UPDATE tasks SET notification_id = ?, updated_at = ? WHERE id = ?;",
+            [notifId, nowIso, task.id]
+          );
         }
       }
     }
