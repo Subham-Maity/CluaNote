@@ -1,0 +1,110 @@
+﻿name: Create Release with Notes
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  create-release:
+    name: Create GitHub Release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Extract version from tag
+        id: version
+        run: echo "VERSION=${GITHUB_REF_NAME}" >> $GITHUB_OUTPUT
+
+      - name: Create Release with Full Notes
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.version.outputs.VERSION }}
+          name: CluaNote ${{ steps.version.outputs.VERSION }}
+          draft: false
+          prerelease: false
+          body: |
+            ## CluaNote ${{ steps.version.outputs.VERSION }}
+
+            Cross-platform task planner — desktop (Windows / macOS / Linux), Android & iOS — built on Rust + Expo.
+            Fast. Private. Offline-first. Free.
+
+            ---
+
+            ### What is New in ${{ steps.version.outputs.VERSION }}
+
+            - **feat:** Full cross-platform coverage — Windows, macOS, Linux, Android, iOS
+            - **feat:** Bidirectional PostgreSQL sync across all devices (Neon, Supabase, self-hosted)
+            - **feat:** Background auto-sync with concurrency lock — no duplicate sync races
+            - **feat:** Real-time screen refresh on Today, History, and Kanban after every sync
+            - **feat:** Soft-delete propagation — deletions replicate across all synced devices
+            - **feat:** Kanban board — To-Do, In Progress, Done columns with Push to Event
+            - **feat:** Task alarms — exact-time Android/iOS notifications with custom audio
+            - **feat:** Yesterday reminder banner — resolve missed tasks without leaving Today view
+            - **feat:** History view — Pending / Not Done / Done tabs, expandable rows with jump-to-date
+            - **feat:** Backup & restore — export/import JSON, portable across platforms
+            - **feat:** System tray (desktop) — close-to-tray keeps alarms running
+            - **feat:** Auto-start (desktop) — registers as login item on Windows/macOS/Linux
+            - **feat:** In-app update checker (desktop) — one GET to public GitHub API, no data sent
+            - **feat:** Changelog modal — release history visible in-app
+            - **fix:** NullPointerException on Android SQLite when sync runs on active connection
+            - **fix:** History list rendering truncation on Android (SectionList layout)
+            - **fix:** Sync concurrency — added isSyncRunning lock to prevent overlapping fetches
+            - **chore:** Dependabot enabled — npm, Cargo, and GitHub Actions updated weekly
+            - **docs:** README rewritten with cross-platform comparison, sync architecture, competitor table
+
+            ---
+
+            ### Asset Reference
+
+            | File | Platform | Arch | Notes |
+            |---|---|---|---|
+            | `cluanote_*_x64-setup.exe` | Windows | x64 | NSIS installer — recommended |
+            | `cluanote_*_x64_en-US.msi` | Windows | x64 | Windows Installer (MSI) |
+            | `cluanote_*_aarch64.dmg` | macOS | ARM64 | M1 / M2 / M3 / M4 |
+            | `cluanote_*_x64.dmg` | macOS | x64 | Intel Macs |
+            | `cluanote_*_amd64.AppImage` | Linux | x64 | Any distro with FUSE / libfuse2 |
+            | `cluanote_*_amd64.deb` | Linux | x64 | Debian, Ubuntu, Mint, Pop!_OS |
+            | `cluanote_*_x86_64.rpm` | Linux | x64 | Fedora, RHEL, CentOS, openSUSE |
+            | `cluanote-mobile.apk` | Android | arm64 | Android 8.0+ (API 26+) |
+            | `cluanote-sync-server-linux` | Linux | x64 | Self-hosted sync daemon binary |
+            | `cluanote-sync-server-macos` | macOS | x64 + ARM | Self-hosted sync daemon binary |
+            | `cluanote-sync-server-windows.exe` | Windows | x64 | Self-hosted sync daemon binary |
+
+            ---
+
+            ### Linux Distro Compatibility
+
+            | Package | Compatible Distros |
+            |---|---|
+            | `.AppImage` | Ubuntu 20.04+, Fedora 36+, Arch Linux, Manjaro, openSUSE Tumbleweed — requires FUSE (`libfuse2` on older distros) |
+            | `.deb` | Ubuntu 20.04+, Debian 11 (Bullseye)+, Linux Mint 20+, Pop!_OS 20.04+ |
+            | `.rpm` | Fedora 36+, RHEL 9+, CentOS Stream 9+, openSUSE Leap 15.4+ |
+
+            > **Linux transparency:** Glassmorphic background requires a compositor (picom, KWin, Mutter, Hyprland, Compton, etc.). Without one, background renders as opaque solid color.
+
+            ---
+
+            ### Requirements
+
+            | Platform | Requirement |
+            |---|---|
+            | Windows | WebView2 Runtime — pre-installed on Windows 10 21H2+ and Windows 11 |
+            | macOS | macOS 10.15 Catalina or later |
+            | Linux | WebKitGTK 4.1 + desktop compositor for transparency |
+            | Android | Android 8.0 (API 26) or later |
+            | iOS | Build from source via Expo CLI + Xcode |
+
+            ---
+
+            ### Configuring Sync (Optional)
+
+            1. Create a free PostgreSQL DB on [Neon](https://neon.tech) or [Supabase](https://supabase.com)
+            2. Copy the connection string
+            3. Open CluaNote → Settings → Sync → paste string → Save & Sync
+            4. Install on other devices, paste same connection string
+            5. Tasks sync bidirectionally in the background automatically
