@@ -91,7 +91,7 @@ export const ReminderBanner: React.FC<ReminderBannerProps> = ({
     >
       {/* Top Banner Header: Status + Badge + Dismiss All */}
       <View className="flex-row items-center justify-between mb-2">
-        <View className="flex-row items-center space-x-2">
+        <View className="flex-row items-center gap-2">
           <View className={`w-2 h-2 rounded-full ${colors.dotBg}`} />
           <Text
             className={`text-[11px] font-bold uppercase tracking-wider ${colors.alertText}`}
@@ -100,7 +100,7 @@ export const ReminderBanner: React.FC<ReminderBannerProps> = ({
           </Text>
         </View>
 
-        <View className="flex-row items-center space-x-2">
+        <View className="flex-row items-center gap-2">
           <View
             className={`px-2 py-0.5 rounded-full ${colors.badgeBg} shadow-sm`}
           >
@@ -111,7 +111,7 @@ export const ReminderBanner: React.FC<ReminderBannerProps> = ({
 
           <TouchableOpacity
             onPress={onDismissAll}
-            className="flex-row items-center space-x-1 px-1.5 py-0.5 rounded-lg bg-white/[0.08]"
+            className="flex-row items-center gap-1 px-2 py-1 rounded-lg bg-white/[0.08]"
             accessibilityLabel="Dismiss all reminders"
           >
             <Ionicons name="close" size={13} color="#cbd5e1" />
@@ -137,7 +137,7 @@ export const ReminderBanner: React.FC<ReminderBannerProps> = ({
           >
             {/* Task Title & Details */}
             <View className="flex-row items-center justify-between mb-1.5">
-              <View className="flex-row items-center space-x-1.5 flex-1 pr-2">
+              <View className="flex-row items-center gap-1.5 flex-1 pr-2">
                 <View
                   className={`w-2 h-2 rounded-full ${
                     PRIORITY_COLOR[task.priority] || "bg-slate-400"
@@ -161,7 +161,7 @@ export const ReminderBanner: React.FC<ReminderBannerProps> = ({
             </View>
 
             {/* Time / Date / Note Preview */}
-            <View className="flex-row items-center space-x-2 mb-2">
+            <View className="flex-row items-center gap-2 mb-2">
               <Text className="text-slate-400 text-[11px]">
                 {formatTaskDate(task.date)}
                 {task.time ? ` · ${task.time}` : ""}
@@ -178,10 +178,10 @@ export const ReminderBanner: React.FC<ReminderBannerProps> = ({
 
             {/* Action Buttons: Done / Not Done / Jump */}
             <View className="flex-row items-center justify-between pt-1 border-t border-white/[0.08]">
-              <View className="flex-row items-center space-x-2">
+              <View className="flex-row items-center gap-2">
                 <TouchableOpacity
                   onPress={() => onMarkDone(task)}
-                  className="flex-row items-center space-x-1 px-2.5 py-1 rounded-lg bg-emerald-500/20 border border-emerald-500/40 active:bg-emerald-500/30"
+                  className="flex-row items-center gap-1 px-2.5 py-1 rounded-lg bg-emerald-500/20 border border-emerald-500/40 active:bg-emerald-500/30"
                 >
                   <Ionicons name="checkmark" size={13} color="#6ee7b7" />
                   <Text className="text-[11px] font-bold text-emerald-300">
@@ -191,7 +191,7 @@ export const ReminderBanner: React.FC<ReminderBannerProps> = ({
 
                 <TouchableOpacity
                   onPress={() => onMarkNotDone(task)}
-                  className="flex-row items-center space-x-1 px-2.5 py-1 rounded-lg bg-rose-500/20 border border-rose-500/40 active:bg-rose-500/30"
+                  className="flex-row items-center gap-1 px-2.5 py-1 rounded-lg bg-rose-500/20 border border-rose-500/40 active:bg-rose-500/30"
                 >
                   <Ionicons name="close" size={13} color="#fda4af" />
                   <Text className="text-[11px] font-bold text-rose-300">
@@ -203,7 +203,7 @@ export const ReminderBanner: React.FC<ReminderBannerProps> = ({
               {onJumpToDate && (
                 <TouchableOpacity
                   onPress={() => onJumpToDate(task.date)}
-                  className="flex-row items-center space-x-1 px-2 py-1 rounded-lg bg-white/[0.06] active:bg-white/[0.1]"
+                  className="flex-row items-center gap-1 px-2 py-1 rounded-lg bg-white/[0.06] active:bg-white/[0.1]"
                 >
                   <Ionicons name="calendar-outline" size={12} color="#94a3b8" />
                   <Text className="text-[10px] text-slate-300 font-medium">

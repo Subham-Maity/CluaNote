@@ -112,7 +112,7 @@ export default function NoteModal() {
             {params.title || "Markdown Note"}
           </Text>
 
-          <View className="flex-row items-center space-x-2">
+          <View className="flex-row items-center gap-2">
             {/* Mode Switcher */}
             <View className="flex-row rounded-lg bg-white/[0.05] p-0.5 border border-white/[0.08]">
               <TouchableOpacity
@@ -138,7 +138,7 @@ export default function NoteModal() {
               <TouchableOpacity
                 onPress={handleSave}
                 disabled={isSaving}
-                className="px-2.5 py-1.5 rounded-lg bg-indigo-600 flex-row items-center space-x-1"
+                className="px-2.5 py-1.5 rounded-lg bg-indigo-600 flex-row items-center gap-1"
               >
                 {isSaving ? (
                   <ActivityIndicator size="small" color="#fff" />

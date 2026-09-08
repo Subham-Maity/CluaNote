@@ -44,7 +44,7 @@ export const DateStrip: React.FC<DateStripProps> = ({
     <View className="px-4 py-2.5 bg-white/[0.02] border-b border-white/[0.08]">
       {/* Month Header and Navigation Controls */}
       <View className="flex-row items-center justify-between mb-2.5">
-        <View className="flex-row items-center space-x-2">
+        <View className="flex-row items-center gap-2">
           <Text className="text-white font-bold text-sm">
             {format(currentDateObj, "MMMM yyyy")}
           </Text>
@@ -60,7 +60,7 @@ export const DateStrip: React.FC<DateStripProps> = ({
           )}
         </View>
 
-        <View className="flex-row items-center space-x-1">
+        <View className="flex-row items-center gap-1.5">
           <TouchableOpacity
             onPress={handlePrevWeek}
             className="w-7 h-7 rounded-lg bg-white/[0.05] items-center justify-center"

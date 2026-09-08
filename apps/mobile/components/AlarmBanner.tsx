@@ -111,7 +111,7 @@ export const AlarmBanner: React.FC = () => {
     >
       <View className="bg-[#121829] border border-amber-500/50 rounded-2xl p-4 shadow-2xl shadow-black/80">
         <View className="flex-row items-center justify-between mb-2">
-          <View className="flex-row items-center space-x-2">
+          <View className="flex-row items-center gap-2">
             <View className="w-7 h-7 rounded-lg bg-amber-500/20 border border-amber-500/40 items-center justify-center">
               <Ionicons name="alarm" size={16} color="#fbbf24" />
             </View>
@@ -144,14 +144,14 @@ export const AlarmBanner: React.FC = () => {
           {activeAlarm.title}
         </Text>
 
-        <View className="flex-row items-center justify-end space-x-2">
+        <View className="flex-row items-center justify-end gap-2">
           {activeAlarm.date ? (
             <TouchableOpacity
               onPress={handleViewTask}
               accessibilityRole="button"
               accessibilityLabel="View task details"
               activeOpacity={0.8}
-              className="px-3.5 py-1.5 rounded-xl bg-white/10 border border-white/10 flex-row items-center space-x-1.5"
+              className="px-3.5 py-1.5 rounded-xl bg-white/10 border border-white/10 flex-row items-center gap-1.5"
             >
               <Ionicons name="calendar-outline" size={14} color="#e2e8f0" />
               <Text className="text-slate-200 text-xs font-semibold">View</Text>
@@ -163,7 +163,7 @@ export const AlarmBanner: React.FC = () => {
             accessibilityRole="button"
             accessibilityLabel="Stop and dismiss alarm"
             activeOpacity={0.8}
-            className="px-4 py-1.5 rounded-xl bg-amber-500 flex-row items-center space-x-1.5"
+            className="px-4 py-1.5 rounded-xl bg-amber-500 flex-row items-center gap-1.5"
           >
             <Ionicons name="stop" size={14} color="#0f172a" />
             <Text className="text-slate-950 font-bold text-xs">Stop</Text>

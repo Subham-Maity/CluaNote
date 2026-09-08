@@ -477,7 +477,7 @@ export default function SettingsScreen() {
         <View className={isTablet ? "max-w-3xl mx-auto w-full" : "w-full"}>
           {/* App Info Card */}
         <View className="p-4 rounded-2xl bg-white/[0.04] border border-white/[0.08] mb-4">
-          <View className="flex-row items-center space-x-3 mb-2">
+          <View className="flex-row items-center gap-3 mb-2">
             <View className="w-10 h-10 rounded-xl bg-indigo-600/30 border border-indigo-500/40 items-center justify-center">
               <Ionicons name="flash-outline" size={22} color="#818cf8" />
             </View>
@@ -499,7 +499,7 @@ export default function SettingsScreen() {
             Cloud & PostgreSQL Sync
           </Text>
           {isConfigured ? (
-            <View className="flex-row items-center space-x-1">
+            <View className="flex-row items-center gap-1.5">
               <View className="w-2 h-2 rounded-full bg-emerald-400" />
               <Text className="text-emerald-400 text-xs font-semibold">Active</Text>
             </View>
@@ -546,12 +546,12 @@ export default function SettingsScreen() {
           ) : null}
 
           {/* Action Buttons */}
-          <View className="flex-row items-center space-x-2 mb-3">
+          <View className="flex-row items-center gap-2 mb-3">
             <TouchableOpacity
               onPress={handleTestSync}
               disabled={isTestingSync || isSyncingNow}
               activeOpacity={0.7}
-              className="flex-1 py-2 px-3 rounded-xl bg-white/10 border border-white/10 flex-row items-center justify-center space-x-1.5"
+              className="flex-1 py-2 px-3 rounded-xl bg-white/10 border border-white/10 flex-row items-center justify-center gap-1.5"
             >
               {isTestingSync ? (
                 <ActivityIndicator size="small" color="#94a3b8" />
@@ -567,7 +567,7 @@ export default function SettingsScreen() {
               onPress={isConfigured ? handleManualSync : handleSaveAndSync}
               disabled={isTestingSync || isSyncingNow}
               activeOpacity={0.7}
-              className="flex-1 py-2 px-3 rounded-xl bg-indigo-600 flex-row items-center justify-center space-x-1.5"
+              className="flex-1 py-2 px-3 rounded-xl bg-indigo-600 flex-row items-center justify-center gap-1.5"
             >
               {isSyncingNow ? (
                 <ActivityIndicator size="small" color="#ffffff" />
@@ -619,12 +619,12 @@ export default function SettingsScreen() {
             Export a full JSON backup of your tasks to Google Drive, iCloud, or local files. Restoring merges tasks safely using timestamp conflict resolution.
           </Text>
 
-          <View className="flex-row items-center space-x-2 mb-3">
+          <View className="flex-row items-center gap-2 mb-3">
             <TouchableOpacity
               onPress={handleExportBackup}
               disabled={isExporting || isImporting}
               activeOpacity={0.7}
-              className="flex-1 py-2.5 px-3 rounded-xl bg-indigo-600/30 border border-indigo-500/40 flex-row items-center justify-center space-x-2"
+              className="flex-1 py-2.5 px-3 rounded-xl bg-indigo-600/30 border border-indigo-500/40 flex-row items-center justify-center gap-2"
             >
               {isExporting ? (
                 <ActivityIndicator size="small" color="#818cf8" />
@@ -640,7 +640,7 @@ export default function SettingsScreen() {
               onPress={handleImportBackup}
               disabled={isExporting || isImporting}
               activeOpacity={0.7}
-              className="flex-1 py-2.5 px-3 rounded-xl bg-white/10 border border-white/10 flex-row items-center justify-center space-x-2"
+              className="flex-1 py-2.5 px-3 rounded-xl bg-white/10 border border-white/10 flex-row items-center justify-center gap-2"
             >
               {isImporting ? (
                 <ActivityIndicator size="small" color="#e2e8f0" />
@@ -670,7 +670,7 @@ export default function SettingsScreen() {
           {/* Master Alarm Toggle */}
           <View className="p-4 border-b border-white/[0.06] flex-row items-center justify-between">
             <View className="flex-1 pr-3">
-              <View className="flex-row items-center space-x-2">
+              <View className="flex-row items-center gap-2">
                 <Ionicons name="alarm-outline" size={18} color="#818cf8" />
                 <Text className="text-white text-sm font-semibold">Task Alarms</Text>
               </View>
@@ -689,7 +689,7 @@ export default function SettingsScreen() {
           {/* Custom Sound Selection */}
           <View className="p-4 border-b border-white/[0.06]">
             <View className="flex-row items-center justify-between mb-2">
-              <View className="flex-row items-center space-x-2">
+              <View className="flex-row items-center gap-2">
                 <Ionicons name="musical-notes-outline" size={18} color="#818cf8" />
                 <Text className="text-white text-sm font-semibold">Alarm Sound</Text>
               </View>
@@ -705,11 +705,11 @@ export default function SettingsScreen() {
               Choose an audio file (.mp3, .wav) to play when task alarms trigger.
             </Text>
 
-            <View className="flex-row items-center space-x-2">
+            <View className="flex-row items-center gap-2">
               <TouchableOpacity
                 onPress={handlePickCustomSound}
                 activeOpacity={0.7}
-                className="flex-1 py-2 px-3 rounded-xl bg-indigo-600/30 border border-indigo-500/40 flex-row items-center justify-center space-x-2"
+                className="flex-1 py-2 px-3 rounded-xl bg-indigo-600/30 border border-indigo-500/40 flex-row items-center justify-center gap-2"
               >
                 <Ionicons name="folder-open-outline" size={16} color="#818cf8" />
                 <Text className="text-indigo-200 text-xs font-semibold">Choose Audio</Text>
@@ -720,7 +720,7 @@ export default function SettingsScreen() {
                   <TouchableOpacity
                     onPress={handleToggleSoundPreview}
                     activeOpacity={0.7}
-                    className="py-2 px-3 rounded-xl bg-white/10 border border-white/10 flex-row items-center justify-center space-x-1.5"
+                    className="py-2 px-3 rounded-xl bg-white/10 border border-white/10 flex-row items-center justify-center gap-1.5"
                   >
                     <Ionicons
                       name={isPlayingPreview ? "stop-circle-outline" : "play-circle-outline"}
@@ -751,7 +751,7 @@ export default function SettingsScreen() {
             activeOpacity={0.7}
             className="p-3.5 border-b border-white/[0.06] flex-row items-center justify-between"
           >
-            <View className="flex-row items-center space-x-3">
+            <View className="flex-row items-center gap-3">
               <Ionicons name="refresh-outline" size={18} color="#818cf8" />
               <Text className="text-white text-sm">Reschedule All Alarms</Text>
             </View>
@@ -766,11 +766,11 @@ export default function SettingsScreen() {
             activeOpacity={0.7}
             className="p-3.5 flex-row items-center justify-between"
           >
-            <View className="flex-row items-center space-x-3">
+            <View className="flex-row items-center gap-3">
               <Ionicons name="shield-checkmark-outline" size={18} color="#818cf8" />
               <Text className="text-white text-sm">Notification Permissions</Text>
             </View>
-            <View className="flex-row items-center space-x-1">
+            <View className="flex-row items-center gap-1">
               <Text className="text-indigo-400 text-xs font-semibold">
                 {hasPermission === false ? "Denied" : "Verify"}
               </Text>
@@ -793,7 +793,7 @@ export default function SettingsScreen() {
             activeOpacity={0.7}
             className="p-3.5 border-b border-white/[0.06] flex-row items-center justify-between"
           >
-            <View className="flex-row items-center space-x-3">
+            <View className="flex-row items-center gap-3">
               <Ionicons name="newspaper-outline" size={18} color="#818cf8" />
               <Text className="text-white text-sm">Release Notes</Text>
             </View>
@@ -808,11 +808,11 @@ export default function SettingsScreen() {
             activeOpacity={0.7}
             className="p-3.5 flex-row items-center justify-between"
           >
-            <View className="flex-row items-center space-x-3">
+            <View className="flex-row items-center gap-3">
               <Ionicons name="cloud-download-outline" size={18} color="#818cf8" />
               <Text className="text-white text-sm">Check for Updates</Text>
             </View>
-            <View className="flex-row items-center space-x-1.5">
+            <View className="flex-row items-center gap-1.5">
               {isCheckingUpdate ? (
                 <ActivityIndicator size="small" color="#818cf8" />
               ) : (
@@ -833,7 +833,7 @@ export default function SettingsScreen() {
         </Text>
         <View className="rounded-2xl bg-white/[0.04] border border-white/[0.08] overflow-hidden mb-6">
           <View className="p-3.5 border-b border-white/[0.06] flex-row items-center justify-between">
-            <View className="flex-row items-center space-x-3">
+            <View className="flex-row items-center gap-3">
               <Ionicons name="information-circle-outline" size={18} color="#818cf8" />
               <Text className="text-white text-sm">Application</Text>
             </View>
@@ -841,7 +841,7 @@ export default function SettingsScreen() {
           </View>
 
           <View className="p-3.5 border-b border-white/[0.06] flex-row items-center justify-between">
-            <View className="flex-row items-center space-x-3">
+            <View className="flex-row items-center gap-3">
               <Ionicons name="person-outline" size={18} color="#818cf8" />
               <Text className="text-white text-sm">Created By</Text>
             </View>
@@ -855,7 +855,7 @@ export default function SettingsScreen() {
             activeOpacity={0.7}
             className="p-3.5 border-b border-white/[0.06] flex-row items-center justify-between"
           >
-            <View className="flex-row items-center space-x-3">
+            <View className="flex-row items-center gap-3">
               <Ionicons name="logo-github" size={18} color="#818cf8" />
               <Text className="text-white text-sm">GitHub Repository</Text>
             </View>
@@ -869,7 +869,7 @@ export default function SettingsScreen() {
             activeOpacity={0.7}
             className="p-3.5 border-b border-white/[0.06] flex-row items-center justify-between"
           >
-            <View className="flex-row items-center space-x-3">
+            <View className="flex-row items-center gap-3">
               <Ionicons name="logo-twitter" size={18} color="#818cf8" />
               <Text className="text-white text-sm">Twitter / X (@subham_maity_)</Text>
             </View>
@@ -883,7 +883,7 @@ export default function SettingsScreen() {
             activeOpacity={0.7}
             className="p-3.5 border-b border-white/[0.06] flex-row items-center justify-between"
           >
-            <View className="flex-row items-center space-x-3">
+            <View className="flex-row items-center gap-3">
               <Ionicons name="logo-instagram" size={18} color="#818cf8" />
               <Text className="text-white text-sm">Instagram (@subham_maity)</Text>
             </View>
@@ -891,7 +891,7 @@ export default function SettingsScreen() {
           </TouchableOpacity>
 
           <View className="p-3.5 flex-row items-center justify-between">
-            <View className="flex-row items-center space-x-3">
+            <View className="flex-row items-center gap-3">
               <Ionicons name="ribbon-outline" size={18} color="#818cf8" />
               <Text className="text-white text-sm">License</Text>
             </View>

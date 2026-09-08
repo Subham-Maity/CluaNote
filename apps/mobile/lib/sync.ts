@@ -111,14 +111,13 @@ async function executeNeonSql(
 ): Promise<Record<string, unknown>[]> {
   const urlObj = new URL(pgUrl);
   const host = urlObj.hostname;
-  const password = decodeURIComponent(urlObj.password);
 
   const endpoint = `https://${host}/sql`;
   const response = await fetch(endpoint, {
     method: "POST",
     headers: {
-      "Authorization": `Bearer ${password}`,
       "Content-Type": "application/json",
+      "Neon-Connection-String": pgUrl,
     },
     body: JSON.stringify({
       query,
@@ -205,11 +204,10 @@ export async function runPostgresSync(): Promise<SyncResult> {
   let remoteTasks: SyncTask[] = [];
 
   if (isNeonConnectionString(url)) {
-    // 1. Ensure table schema exists on Neon PostgreSQL
+    // 1. Ensure table schema exists on Neon PostgreSQL (individual DDL statements)
     await executeNeonSql(
       url,
-      `
-      CREATE TABLE IF NOT EXISTS cluanote_tasks (
+      `CREATE TABLE IF NOT EXISTS cluanote_tasks (
           uuid VARCHAR(64) PRIMARY KEY,
           title TEXT NOT NULL,
           note TEXT,
@@ -221,12 +219,23 @@ export async function runPostgresSync(): Promise<SyncResult> {
           updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
           is_deleted BOOLEAN NOT NULL DEFAULT FALSE,
           is_future_note INTEGER NOT NULL DEFAULT 0
-      );
-      CREATE INDEX IF NOT EXISTS idx_cluanote_tasks_date ON cluanote_tasks(date);
-      CREATE INDEX IF NOT EXISTS idx_cluanote_tasks_updated ON cluanote_tasks(updated_at);
-      ALTER TABLE cluanote_tasks ADD COLUMN IF NOT EXISTS is_future_note INTEGER NOT NULL DEFAULT 0;
-      `
+      )`
     );
+    try {
+      await executeNeonSql(url, `CREATE INDEX IF NOT EXISTS idx_cluanote_tasks_date ON cluanote_tasks(date)`);
+    } catch {
+      // Ignore if index already exists
+    }
+    try {
+      await executeNeonSql(url, `CREATE INDEX IF NOT EXISTS idx_cluanote_tasks_updated ON cluanote_tasks(updated_at)`);
+    } catch {
+      // Ignore if index already exists
+    }
+    try {
+      await executeNeonSql(url, `ALTER TABLE cluanote_tasks ADD COLUMN IF NOT EXISTS is_future_note INTEGER NOT NULL DEFAULT 0`);
+    } catch {
+      // Ignore if column already exists
+    }
 
     // 2. Fetch all remote tasks FIRST
     const rows = await executeNeonSql(

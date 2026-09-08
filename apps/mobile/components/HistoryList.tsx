@@ -166,7 +166,7 @@ export const HistoryList: React.FC<HistoryListProps> = ({
         const tag = getDateRelativeTag(date);
         return (
           <View className="flex-row items-center justify-between mt-4 mb-2 px-1">
-            <View className="flex-row items-center space-x-2">
+            <View className="flex-row items-center gap-2">
               <Text className="text-white text-xs font-bold uppercase tracking-wider">
                 {formatDateHeader(date)}
               </Text>
@@ -195,7 +195,7 @@ export const HistoryList: React.FC<HistoryListProps> = ({
               activeOpacity={0.7}
               className="p-3.5 flex-row items-center justify-between"
             >
-              <View className="flex-row items-center space-x-2.5 flex-1 pr-2">
+              <View className="flex-row items-center gap-2.5 flex-1 pr-2">
                 <View className={`w-2 h-2 rounded-full ${priorityMeta.dot}`} />
                 <View className="flex-1">
                   <Text
@@ -219,7 +219,7 @@ export const HistoryList: React.FC<HistoryListProps> = ({
                 </View>
               </View>
 
-              <View className="flex-row items-center space-x-2">
+              <View className="flex-row items-center gap-2">
                 <View
                   className={`px-2 py-0.5 rounded border text-[10px] ${priorityMeta.bg}`}
                 >
@@ -251,7 +251,7 @@ export const HistoryList: React.FC<HistoryListProps> = ({
 
                 {/* Details Meta Row */}
                 <View className="flex-row items-center justify-between mb-3 text-slate-400 text-xs">
-                  <View className="flex-row items-center space-x-1">
+                  <View className="flex-row items-center gap-1.5">
                     <Ionicons name="calendar-outline" size={13} color="#94a3b8" />
                     <Text className="text-slate-400 text-xs">{item.date}</Text>
                     {item.time && (
@@ -259,7 +259,7 @@ export const HistoryList: React.FC<HistoryListProps> = ({
                     )}
                   </View>
 
-                  <View className="flex-row items-center space-x-1">
+                  <View className="flex-row items-center gap-1.5">
                     <Text className="text-slate-500 text-xs">Status:</Text>
                     <Text
                       className={`text-xs font-semibold ${
@@ -281,12 +281,12 @@ export const HistoryList: React.FC<HistoryListProps> = ({
 
                 {/* Action Buttons Row */}
                 <View className="flex-row items-center justify-between pt-2 border-t border-white/[0.05]">
-                  <View className="flex-row items-center space-x-2 flex-wrap">
+                  <View className="flex-row items-center gap-2 flex-wrap">
                     {/* Mark Done */}
                     {item.completed !== 1 && (
                       <TouchableOpacity
                         onPress={() => onSetStatus(item, 1)}
-                        className="flex-row items-center space-x-1 px-2.5 py-1.5 rounded-lg bg-emerald-500/20 border border-emerald-500/30 active:bg-emerald-500/40"
+                        className="flex-row items-center gap-1 px-2.5 py-1.5 rounded-lg bg-emerald-500/20 border border-emerald-500/30 active:bg-emerald-500/40"
                       >
                         <Ionicons name="checkmark" size={13} color="#6ee7b7" />
                         <Text className="text-[11px] font-bold text-emerald-300">
@@ -299,7 +299,7 @@ export const HistoryList: React.FC<HistoryListProps> = ({
                     {item.completed !== 2 && (
                       <TouchableOpacity
                         onPress={() => onSetStatus(item, 2)}
-                        className="flex-row items-center space-x-1 px-2.5 py-1.5 rounded-lg bg-rose-500/20 border border-rose-500/30 active:bg-rose-500/40"
+                        className="flex-row items-center gap-1 px-2.5 py-1.5 rounded-lg bg-rose-500/20 border border-rose-500/30 active:bg-rose-500/40"
                       >
                         <Ionicons name="close" size={13} color="#fda4af" />
                         <Text className="text-[11px] font-bold text-rose-300">
@@ -312,7 +312,7 @@ export const HistoryList: React.FC<HistoryListProps> = ({
                     {item.completed !== 0 && (
                       <TouchableOpacity
                         onPress={() => onSetStatus(item, 0)}
-                        className="flex-row items-center space-x-1 px-2.5 py-1.5 rounded-lg bg-indigo-500/20 border border-indigo-500/30 active:bg-indigo-500/40"
+                        className="flex-row items-center gap-1 px-2.5 py-1.5 rounded-lg bg-indigo-500/20 border border-indigo-500/30 active:bg-indigo-500/40"
                       >
                         <Ionicons name="refresh" size={13} color="#a5b4fc" />
                         <Text className="text-[11px] font-bold text-indigo-300">
@@ -322,7 +322,7 @@ export const HistoryList: React.FC<HistoryListProps> = ({
                     )}
                   </View>
 
-                  <View className="flex-row items-center space-x-1.5">
+                  <View className="flex-row items-center gap-1.5">
                     {/* Jump to Date */}
                     <TouchableOpacity
                       onPress={() => onJumpToDate(item.date)}

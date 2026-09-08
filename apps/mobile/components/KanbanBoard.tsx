@@ -141,7 +141,7 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
             <View
               className={`px-4 py-3 border-b border-white/[0.08] ${column.headerBg} flex-row items-center justify-between`}
             >
-              <View className="flex-row items-center space-x-2">
+              <View className="flex-row items-center gap-2">
                 <Ionicons
                   name={column.icon}
                   size={16}

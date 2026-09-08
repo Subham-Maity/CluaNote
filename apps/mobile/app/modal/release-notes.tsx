@@ -122,7 +122,7 @@ export default function ReleaseNotesModal() {
       <View className="mb-5 rounded-2xl bg-white/[0.04] border border-white/[0.08] p-4">
         {/* Release Header */}
         <View className="flex-row items-center justify-between mb-2">
-          <View className="flex-row items-center space-x-2">
+          <View className="flex-row items-center gap-2">
             <View className="px-2.5 py-1 rounded-full bg-indigo-600/30 border border-indigo-500/40">
               <Text className="text-indigo-300 font-bold text-xs">
                 {item.tag_name}
@@ -154,7 +154,7 @@ export default function ReleaseNotesModal() {
           accessibilityRole="button"
           accessibilityLabel={`View ${item.tag_name} on GitHub`}
           activeOpacity={0.7}
-          className="mt-3 pt-2 border-t border-white/[0.06] flex-row items-center space-x-1.5 justify-end"
+          className="mt-3 pt-2 border-t border-white/[0.06] flex-row items-center gap-1.5 justify-end"
         >
           <Text className="text-indigo-400 text-xs font-semibold">
             View on GitHub
@@ -173,7 +173,7 @@ export default function ReleaseNotesModal() {
     >
       {/* Modal Header */}
       <View className="px-4 py-3 border-b border-white/[0.08] flex-row items-center justify-between">
-        <View className="flex-row items-center space-x-2.5">
+        <View className="flex-row items-center gap-2.5">
           <TouchableOpacity
             onPress={() => router.back()}
             accessibilityRole="button"

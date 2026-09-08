@@ -92,7 +92,7 @@ export default function TodayScreen() {
         <View className={isTablet ? "max-w-4xl mx-auto w-full flex-1" : "flex-1"}>
           {/* App Header */}
           <View className="px-4 py-2 flex-row items-center justify-between">
-            <View className="flex-row items-center space-x-2">
+            <View className="flex-row items-center gap-2.5">
               <View className="w-8 h-8 rounded-xl bg-indigo-600/30 border border-indigo-500/40 items-center justify-center">
                 <Ionicons name="flash-outline" size={18} color="#818cf8" />
               </View>
@@ -110,7 +110,7 @@ export default function TodayScreen() {
               }
               accessibilityRole="button"
               accessibilityLabel="Add new task"
-              className="px-3 py-1.5 rounded-xl bg-indigo-600 active:bg-indigo-700 flex-row items-center space-x-1 shadow-md shadow-indigo-500/20"
+              className="px-3.5 py-2 rounded-xl bg-indigo-600 active:bg-indigo-700 flex-row items-center gap-1.5 shadow-md shadow-indigo-500/20"
             >
               <Ionicons name="add" size={16} color="white" />
               <Text className="text-white text-xs font-bold">New Task</Text>

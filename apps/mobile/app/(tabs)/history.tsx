@@ -130,7 +130,7 @@ export default function HistoryScreen() {
         <View className={isTablet ? "max-w-4xl mx-auto w-full flex-1" : "flex-1"}>
           {/* Header */}
           <View className="flex-row items-center justify-between mb-3">
-            <View className="flex-row items-center space-x-2">
+            <View className="flex-row items-center gap-2.5">
               <View className="w-8 h-8 rounded-xl bg-violet-600/20 border border-violet-500/30 items-center justify-center">
                 <Ionicons name="time-outline" size={18} color="#a78bfa" />
               </View>
@@ -150,7 +150,7 @@ export default function HistoryScreen() {
           </View>
 
           {/* 3-Segment selector with count chips */}
-          <View className="flex-row p-1 rounded-2xl bg-white/[0.04] border border-white/[0.08] mb-4">
+          <View className="flex-row p-1 rounded-2xl bg-white/[0.04] border border-white/[0.08] mb-4 gap-1">
             {(
               [
                 { key: "pending", label: "Pending", count: counts.pending },
@@ -171,7 +171,7 @@ export default function HistoryScreen() {
                   accessibilityRole="tab"
                   accessibilityState={{ selected: isActive }}
                   accessibilityLabel={`${s.label} history, ${s.count} tasks`}
-                  className={`flex-1 py-2 rounded-xl flex-row items-center justify-center space-x-1.5 ${
+                  className={`flex-1 py-2.5 rounded-xl flex-row items-center justify-center gap-2 ${
                     isActive
                       ? "bg-indigo-600 shadow-md shadow-indigo-600/30"
                       : "active:bg-white/[0.02]"
@@ -185,7 +185,7 @@ export default function HistoryScreen() {
                     {s.label}
                   </Text>
                   <View
-                    className={`px-1.5 py-0.2 rounded-full ${
+                    className={`px-2 py-0.5 rounded-full ${
                       isActive ? "bg-white/25" : "bg-white/10"
                     }`}
                   >

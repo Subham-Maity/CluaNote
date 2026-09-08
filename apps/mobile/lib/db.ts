@@ -84,3 +84,13 @@ export async function getDb(): Promise<ExpoSQLiteDatabase<typeof schema>> {
   }
   return initDb();
 }
+
+/**
+ * Returns the underlying Expo SQLiteDatabase instance.
+ */
+export async function getExpoDb(): Promise<SQLite.SQLiteDatabase> {
+  if (!expoDb) {
+    await initDb();
+  }
+  return expoDb!;
+}

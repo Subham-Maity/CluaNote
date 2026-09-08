@@ -63,7 +63,7 @@ export const Timeline: React.FC<TimelineProps> = ({
         return (
           <View key={hour} className="relative mb-3">
             {/* Hour Header Row */}
-            <View className="flex-row items-center space-x-2 mb-1.5">
+            <View className="flex-row items-center gap-2 mb-1.5">
               <Text
                 className={`text-[11px] font-mono font-semibold w-12 ${
                   isCurrentHour ? "text-indigo-400 font-bold" : "text-slate-500"
@@ -94,7 +94,7 @@ export const Timeline: React.FC<TimelineProps> = ({
 
             {/* Tasks in this hour */}
             {hourTasks.length > 0 ? (
-              <View className="ml-12 space-y-2">
+              <View className="ml-12 gap-2">
                 {hourTasks.map((task) => (
                   <TaskCard
                     key={task.uuid || String(task.id)}

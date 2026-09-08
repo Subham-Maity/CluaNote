@@ -144,7 +144,7 @@ export const TaskCard: React.FC<TaskCardProps> = ({
 
           {/* Title & Note */}
           <View className="flex-1">
-            <View className="flex-row items-center space-x-1.5 flex-wrap">
+            <View className="flex-row items-center gap-1.5 flex-wrap">
               <Text
                 className={`text-sm font-medium leading-snug ${
                   isCompleted
@@ -177,8 +177,8 @@ export const TaskCard: React.FC<TaskCardProps> = ({
         </View>
 
         {/* Right: Badges & Priority Dot */}
-        <View className="items-end space-y-1">
-          <View className="flex-row items-center space-x-1.5">
+        <View className="items-end gap-1">
+          <View className="flex-row items-center gap-1.5">
             {task.time ? (
               <View className="px-2 py-0.5 rounded-md bg-white/[0.06] border border-white/[0.08]">
                 <Text className="text-[10px] font-mono font-semibold text-indigo-300">
@@ -204,7 +204,7 @@ export const TaskCard: React.FC<TaskCardProps> = ({
       {/* Inline Quick Action Bar on Long Press */}
       {showActions && (
         <View className="px-3 py-2 border-t border-white/[0.06] bg-black/20 flex-row items-center justify-between">
-          <View className="flex-row space-x-1">
+          <View className="flex-row gap-1.5">
             <TouchableOpacity
               onPress={() =>
                 handleQuickAction(() =>
@@ -213,7 +213,7 @@ export const TaskCard: React.FC<TaskCardProps> = ({
               }
               accessibilityRole="button"
               accessibilityLabel="Mark as done"
-              className="px-2.5 py-1 rounded-lg bg-emerald-500/20 border border-emerald-500/30 flex-row items-center space-x-1"
+              className="px-2.5 py-1 rounded-lg bg-emerald-500/20 border border-emerald-500/30 flex-row items-center gap-1.5"
             >
               <Ionicons name="checkmark" size={12} color="#34d399" />
               <Text className="text-emerald-300 text-[11px] font-semibold">Done</Text>
@@ -225,7 +225,7 @@ export const TaskCard: React.FC<TaskCardProps> = ({
               }
               accessibilityRole="button"
               accessibilityLabel="Mark as missed"
-              className="px-2.5 py-1 rounded-lg bg-rose-500/20 border border-rose-500/30 flex-row items-center space-x-1"
+              className="px-2.5 py-1 rounded-lg bg-rose-500/20 border border-rose-500/30 flex-row items-center gap-1.5"
             >
               <Ionicons name="close" size={12} color="#fb7185" />
               <Text className="text-rose-300 text-[11px] font-semibold">Missed</Text>
@@ -235,7 +235,7 @@ export const TaskCard: React.FC<TaskCardProps> = ({
               onPress={() => handleQuickAction(() => onEdit(task))}
               accessibilityRole="button"
               accessibilityLabel="Edit task"
-              className="px-2.5 py-1 rounded-lg bg-white/[0.06] border border-white/[0.1] flex-row items-center space-x-1"
+              className="px-2.5 py-1 rounded-lg bg-white/[0.06] border border-white/[0.1] flex-row items-center gap-1.5"
             >
               <Ionicons name="pencil" size={12} color="#94a3b8" />
               <Text className="text-slate-300 text-[11px] font-semibold">Edit</Text>

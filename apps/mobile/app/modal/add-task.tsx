@@ -142,7 +142,11 @@ export default function AddTaskModal() {
           </TouchableOpacity>
         </View>
 
-        <ScrollView className="flex-1 px-4 pt-4 space-y-4">
+        <ScrollView
+          className="flex-1"
+          contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 16, paddingBottom: 40, gap: 14 }}
+          keyboardShouldPersistTaps="handled"
+        >
           {error ? (
             <View className="p-3 rounded-xl bg-rose-500/20 border border-rose-500/30">
               <Text className="text-rose-300 text-xs">{error}</Text>
@@ -165,7 +169,7 @@ export default function AddTaskModal() {
           </View>
 
           {/* Date and Time */}
-          <View className="mt-3">
+          <View>
             <Text className="text-slate-400 text-xs font-semibold mb-1.5">
               Date (YYYY-MM-DD)
             </Text>
@@ -179,12 +183,12 @@ export default function AddTaskModal() {
           </View>
 
           {/* Anytime toggle vs Time picker */}
-          <View className="mt-3">
+          <View>
             <View className="flex-row items-center justify-between mb-1.5">
               <Text className="text-slate-400 text-xs font-semibold">Time</Text>
               <TouchableOpacity
                 onPress={() => setIsAnytime(!isAnytime)}
-                className="flex-row items-center space-x-1"
+                className="flex-row items-center gap-1"
               >
                 <Text className="text-xs text-indigo-400 font-semibold">
                   {isAnytime ? "Set Specific Time" : "Set to Anytime"}
@@ -210,11 +214,11 @@ export default function AddTaskModal() {
           </View>
 
           {/* Priority Pills */}
-          <View className="mt-3">
+          <View>
             <Text className="text-slate-400 text-xs font-semibold mb-1.5">
               Priority
             </Text>
-            <View className="flex-row space-x-2">
+            <View className="flex-row gap-2">
               {(["low", "medium", "high"] as const).map((p) => (
                 <TouchableOpacity
                   key={p}
@@ -248,7 +252,7 @@ export default function AddTaskModal() {
           </View>
 
           {/* Note Input */}
-          <View className="mt-3">
+          <View>
             <Text className="text-slate-400 text-xs font-semibold mb-1.5">
               Notes (Markdown supported)
             </Text>
@@ -267,7 +271,7 @@ export default function AddTaskModal() {
           {/* Future Note Toggle */}
           <TouchableOpacity
             onPress={() => setIsFutureNote(!isFutureNote)}
-            className="flex-row items-center justify-between p-3.5 rounded-xl bg-white/[0.04] border border-white/[0.08] mt-2 mb-4"
+            className="flex-row items-center justify-between p-3.5 rounded-xl bg-white/[0.04] border border-white/[0.08] mt-1"
           >
             <View className="flex-1 pr-2">
               <Text className="text-white text-sm font-semibold">
@@ -294,7 +298,7 @@ export default function AddTaskModal() {
           {isEditing && (
             <TouchableOpacity
               onPress={handleDelete}
-              className="p-3.5 rounded-xl bg-rose-500/10 border border-rose-500/20 flex-row items-center justify-center space-x-2 mb-10"
+              className="p-3.5 rounded-xl bg-rose-500/10 border border-rose-500/20 flex-row items-center justify-center gap-2 mb-6"
             >
               <Ionicons name="trash-outline" size={16} color="#f43f5e" />
               <Text className="text-rose-400 font-bold text-xs">

@@ -83,12 +83,12 @@ export const UpdateBanner: React.FC = () => {
         accessibilityLabel={`Update available: ${updateInfo.latestVersion}`}
         className="rounded-2xl bg-[#0e1626]/95 border border-indigo-500/40 p-3.5 shadow-2xl shadow-indigo-950/80 flex-row items-center justify-between backdrop-blur-md"
       >
-        <View className="flex-row items-center space-x-3 flex-1 pr-2">
+        <View className="flex-row items-center gap-3 flex-1 pr-2">
           <View className="w-8 h-8 rounded-full bg-indigo-600/30 border border-indigo-500/50 items-center justify-center">
             <Ionicons name="sparkles" size={16} color="#818cf8" />
           </View>
           <View className="flex-1">
-            <View className="flex-row items-center space-x-1.5">
+            <View className="flex-row items-center gap-1.5">
               <Text className="text-white text-xs font-bold tracking-tight">
                 Update Available
               </Text>
@@ -107,7 +107,7 @@ export const UpdateBanner: React.FC = () => {
           </View>
         </View>
 
-        <View className="flex-row items-center space-x-2">
+        <View className="flex-row items-center gap-2">
           <TouchableOpacity
             onPress={handleOpenRelease}
             accessibilityRole="button"

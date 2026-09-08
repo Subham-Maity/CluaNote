@@ -29,7 +29,7 @@ export const AnytimeSection: React.FC<AnytimeSectionProps> = ({
     <View className="mb-4">
       {/* Section Header */}
       <View className="flex-row items-center justify-between mb-2">
-        <View className="flex-row items-center space-x-1.5">
+        <View className="flex-row items-center gap-1.5">
           <Ionicons name="time-outline" size={14} color="#818cf8" />
           <Text className="text-xs font-bold uppercase tracking-wider text-slate-300">
             Anytime Today

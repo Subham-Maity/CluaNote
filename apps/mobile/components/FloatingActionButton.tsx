@@ -116,7 +116,7 @@ export const FloatingActionButton: React.FC<FloatingActionButtonProps> = ({
           position: "absolute",
           bottom: 24,
           right: 20,
-          alignItems: "center",
+          alignItems: "flex-end",
           zIndex: 50,
         }}
       >
@@ -125,6 +125,7 @@ export const FloatingActionButton: React.FC<FloatingActionButtonProps> = ({
           style={{
             position: "absolute",
             bottom: 0,
+            right: 0,
             opacity: secondaryOpacity,
             transform: [
               { translateY: secondaryTranslateY },
@@ -133,8 +134,8 @@ export const FloatingActionButton: React.FC<FloatingActionButtonProps> = ({
             pointerEvents: isOpen ? "auto" : "none",
           }}
         >
-          <View className="flex-row items-center space-x-2">
-            <View className="px-2.5 py-1 rounded-lg bg-slate-900/90 border border-white/10 shadow-lg">
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 8, paddingRight: 4 }}>
+            <View className="px-3 py-1.5 rounded-xl bg-slate-900/95 border border-white/10 shadow-lg">
               <Text className="text-white text-xs font-semibold">Future Note</Text>
             </View>
             <TouchableOpacity

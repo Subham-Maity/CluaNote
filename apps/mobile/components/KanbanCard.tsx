@@ -74,7 +74,7 @@ export const KanbanCard: React.FC<KanbanCardProps> = ({
     >
       {/* Card Header: Priority dot, Title, Drag handle */}
       <View className="flex-row items-start justify-between mb-2">
-        <View className="flex-row items-center space-x-2 flex-1 pr-2">
+        <View className="flex-row items-center gap-2 flex-1 pr-2">
           <View className={`w-2.5 h-2.5 rounded-full ${priority.dot}`} />
           <Text
             className="text-white text-sm font-bold flex-1"
@@ -110,7 +110,7 @@ export const KanbanCard: React.FC<KanbanCardProps> = ({
 
       {/* Badges: Target Date & Priority */}
       <View className="flex-row items-center justify-between mb-3">
-        <View className="flex-row items-center space-x-1.5">
+        <View className="flex-row items-center gap-1.5">
           <Ionicons name="calendar-outline" size={13} color="#94a3b8" />
           <Text className="text-slate-400 text-xs">
             {formatDate(task.date)}
@@ -132,7 +132,7 @@ export const KanbanCard: React.FC<KanbanCardProps> = ({
         {/* Push to Event Button */}
         <TouchableOpacity
           onPress={() => onPushToEvent(task)}
-          className="flex-row items-center space-x-1.5 px-2.5 py-1.5 rounded-xl bg-indigo-600/20 border border-indigo-500/30 active:bg-indigo-600/30"
+          className="flex-row items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-indigo-600/20 border border-indigo-500/30 active:bg-indigo-600/30"
           accessibilityLabel="Promote future note to calendar event"
         >
           <Ionicons name="arrow-forward-circle-outline" size={14} color="#818cf8" />
@@ -142,11 +142,11 @@ export const KanbanCard: React.FC<KanbanCardProps> = ({
         </TouchableOpacity>
 
         {/* Column Switcher Pills */}
-        <View className="flex-row items-center space-x-1">
+        <View className="flex-row items-center gap-1">
           {currentStatus === "todo" && (
             <TouchableOpacity
               onPress={() => onMoveStatus(task, "doing")}
-              className="px-2 py-1 rounded-lg bg-amber-500/10 border border-amber-500/20 active:bg-amber-500/25 flex-row items-center space-x-1"
+              className="px-2 py-1 rounded-lg bg-amber-500/10 border border-amber-500/20 active:bg-amber-500/25 flex-row items-center gap-1"
             >
               <Text className="text-[10px] font-bold text-amber-300">Start</Text>
               <Ionicons name="arrow-forward" size={11} color="#fcd34d" />
@@ -163,7 +163,7 @@ export const KanbanCard: React.FC<KanbanCardProps> = ({
               </TouchableOpacity>
               <TouchableOpacity
                 onPress={() => onMoveStatus(task, "done")}
-                className="px-2 py-1 rounded-lg bg-emerald-500/10 border border-emerald-500/20 active:bg-emerald-500/25 flex-row items-center space-x-1"
+                className="px-2 py-1 rounded-lg bg-emerald-500/10 border border-emerald-500/20 active:bg-emerald-500/25 flex-row items-center gap-1"
               >
                 <Text className="text-[10px] font-bold text-emerald-300">Done</Text>
                 <Ionicons name="checkmark" size={11} color="#6ee7b7" />
@@ -174,7 +174,7 @@ export const KanbanCard: React.FC<KanbanCardProps> = ({
           {currentStatus === "done" && (
             <TouchableOpacity
               onPress={() => onMoveStatus(task, "todo")}
-              className="px-2 py-1 rounded-lg bg-slate-500/10 border border-slate-500/20 active:bg-slate-500/25 flex-row items-center space-x-1"
+              className="px-2 py-1 rounded-lg bg-slate-500/10 border border-slate-500/20 active:bg-slate-500/25 flex-row items-center gap-1"
             >
               <Ionicons name="refresh" size={11} color="#94a3b8" />
               <Text className="text-[10px] font-bold text-slate-300">Reopen</Text>

@@ -124,7 +124,7 @@ export default function KanbanScreen() {
       <SafeAreaView className="flex-1 pt-2" edges={["top"]}>
         {/* Header */}
         <View className="px-4 flex-row items-center justify-between mb-3">
-          <View className="flex-row items-center space-x-2">
+          <View className="flex-row items-center gap-2.5">
             <View className="w-8 h-8 rounded-xl bg-amber-600/20 border border-amber-500/30 items-center justify-center">
               <Ionicons name="grid-outline" size={18} color="#fbbf24" />
             </View>
@@ -142,7 +142,7 @@ export default function KanbanScreen() {
             onPress={handleCreateFutureNote}
             accessibilityRole="button"
             accessibilityLabel="Create future note"
-            className="px-3 py-1.5 rounded-xl bg-amber-600 active:bg-amber-700 flex-row items-center space-x-1 shadow-md shadow-amber-600/20"
+            className="px-3.5 py-2 rounded-xl bg-amber-600 active:bg-amber-700 flex-row items-center gap-1.5 shadow-md shadow-amber-600/20"
           >
             <Ionicons name="add" size={16} color="white" />
             <Text className="text-white text-xs font-bold">New Note</Text>

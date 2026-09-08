@@ -1,8 +1,8 @@
 import { eq, and, desc, asc, sql } from "drizzle-orm";
 import { tasks as tasksTable } from "./schema";
-import { getDb } from "./db";
+import { getDb, getExpoDb } from "./db";
 import { scheduleTaskAlarm, cancelTaskAlarm, rescheduleAllAlarms } from "./alarm";
-import type { Task, NewTask, UpdateTaskInput, SyncTask } from "@cluanote/shared";
+import { type Task, type NewTask, type UpdateTaskInput, type SyncTask, CURRENT_VERSION } from "@cluanote/shared";
 
 /**
  * Fetches all active tasks for a specific date (YYYY-MM-DD), ordered by time and creation.
@@ -461,46 +461,76 @@ export async function setTaskStatus(
 
 /**
  * Merges pulled remote tasks from Postgres into local SQLite.
+ * Uses native expo-sqlite transaction to prevent crashes in native statement preparation.
  */
 export async function batchUpsertFromSync(pulledTasks: SyncTask[]): Promise<number> {
   if (pulledTasks.length === 0) return 0;
-  const db = await getDb();
+  const expoDb = await getExpoDb();
 
   let mergedCount = 0;
-  for (const t of pulledTasks) {
-    await db
-      .insert(tasksTable)
-      .values({
-        uuid: t.uuid,
-        title: t.title,
-        note: t.note || null,
-        date: t.date,
-        time: t.time || null,
-        priority: t.priority || "medium",
-        completed: t.completed,
-        created_at: t.created_at,
-        updated_at: t.updated_at,
-        is_deleted: t.is_deleted,
-        is_future_note: t.is_future_note ?? 0,
-      })
-      .onConflictDoUpdate({
-        target: tasksTable.uuid,
-        set: {
-          title: sql`excluded.title`,
-          note: sql`excluded.note`,
-          date: sql`excluded.date`,
-          time: sql`excluded.time`,
-          priority: sql`excluded.priority`,
-          completed: sql`excluded.completed`,
-          created_at: sql`excluded.created_at`,
-          updated_at: sql`excluded.updated_at`,
-          is_deleted: sql`excluded.is_deleted`,
-          is_future_note: sql`excluded.is_future_note`,
-        },
-        where: sql`excluded.updated_at >= ${tasksTable.updated_at}`,
-      });
-    mergedCount++;
-  }
+  await expoDb.withExclusiveTransactionAsync(async (txn) => {
+    for (const t of pulledTasks) {
+      const existing = await txn.getFirstAsync<{ id: number; updated_at: string }>(
+        "SELECT id, updated_at FROM tasks WHERE uuid = ? LIMIT 1;",
+        [t.uuid]
+      );
+
+      if (!existing) {
+        await txn.runAsync(
+          `INSERT INTO tasks (
+            uuid, title, note, date, time, priority, completed, created_at, updated_at, is_deleted, is_future_note
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`,
+          [
+            t.uuid,
+            t.title,
+            t.note || null,
+            t.date,
+            t.time || null,
+            t.priority || "medium",
+            t.completed,
+            t.created_at,
+            t.updated_at,
+            t.is_deleted,
+            t.is_future_note ?? 0,
+          ]
+        );
+        mergedCount++;
+      } else {
+        const remoteTime = new Date(t.updated_at).getTime();
+        const localTime = new Date(existing.updated_at).getTime();
+        if (remoteTime >= localTime) {
+          await txn.runAsync(
+            `UPDATE tasks SET
+              title = ?,
+              note = ?,
+              date = ?,
+              time = ?,
+              priority = ?,
+              completed = ?,
+              created_at = ?,
+              updated_at = ?,
+              is_deleted = ?,
+              is_future_note = ?
+            WHERE uuid = ?;`,
+            [
+              t.title,
+              t.note || null,
+              t.date,
+              t.time || null,
+              t.priority || "medium",
+              t.completed,
+              t.created_at,
+              t.updated_at,
+              t.is_deleted,
+              t.is_future_note ?? 0,
+              t.uuid,
+            ]
+          );
+          mergedCount++;
+        }
+      }
+    }
+  });
 
   return mergedCount;
 }
@@ -512,7 +542,7 @@ export async function exportAllTasksJson(): Promise<string> {
   const tasks = await getAllTasks();
   const backup = {
     appName: "CluaNote",
-    version: "0.4.5",
+    version: CURRENT_VERSION,
     exportedAt: new Date().toISOString(),
     totalTasks: tasks.length,
     tasks,
