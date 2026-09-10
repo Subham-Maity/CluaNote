@@ -6,7 +6,7 @@ description = "Lightweight cross-platform sync server for CluaNote"
 authors = ["Subham Maity <https://github.com/Subham-Maity>"]
 
 [dependencies]
-axum = "0.7"
+axum = "0.8"
 tokio = { version = "1", features = ["full"] }
 tokio-postgres = { version = "0.7", features = ["with-chrono-0_4"] }
 postgres-native-tls = "0.5"
