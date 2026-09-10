@@ -39,7 +39,7 @@
     "nativewind": "^4.1.23",
     "punycode": "^2.3.1",
     "react": "19.2.3",
-    "react-dom": "19.2.3",
+    "react-dom": "19.2.8",
     "react-native": "0.86.3",
     "react-native-css-interop": "0.2.6",
     "react-native-draggable-flatlist": "^4.0.3",
