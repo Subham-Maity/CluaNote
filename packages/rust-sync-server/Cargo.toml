@@ -20,4 +20,4 @@ chrono = { version = "0.4", features = ["serde"] }
 url = "2"
 hex = "0.4"
 tower-http = { version = "0.5", features = ["cors"] }
-dirs = "5"
+dirs = "7"
