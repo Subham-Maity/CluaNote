@@ -13,7 +13,7 @@
     "@cluanote/shared": "workspace:*",
     "@expo-google-fonts/inter": "^0.4.2",
     "@expo/vector-icons": "^15.1.1",
-    "@react-native-async-storage/async-storage": "^2.2.0",
+    "@react-native-async-storage/async-storage": "^3.1.1",
     "babel-preset-expo": "~57.0.10",
     "date-fns": "^4.4.0",
     "drizzle-orm": "^0.45.2",
