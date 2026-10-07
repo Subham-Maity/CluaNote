@@ -3,7 +3,6 @@
   "compilerOptions": {
     "strict": true,
     "ignoreDeprecations": "6.0",
-    "baseUrl": ".",
     "paths": {
       "@cluanote/shared": ["../../packages/shared/src/index.ts"],
       "@cluanote/shared/*": ["../../packages/shared/src/*"]
