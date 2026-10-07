@@ -102,16 +102,16 @@ pub fn run() {
         })
         .setup(|app| {
             // Apply native OS window vibrancy/blur effects
-            if let Some(window) = app.get_webview_window("main") {
+            if let Some(_window) = app.get_webview_window("main") {
                 #[cfg(target_os = "windows")]
                 {
-                    let _ = window_vibrancy::apply_blur(&window, Some((11, 13, 18, 140)));
+                    let _ = window_vibrancy::apply_blur(&_window, Some((11, 13, 18, 140)));
                 }
 
                 #[cfg(target_os = "macos")]
                 {
                     let _ = window_vibrancy::apply_vibrancy(
-                        &window,
+                        &_window,
                         window_vibrancy::NSVisualEffectMaterial::HudWindow,
                         None,
                         None,

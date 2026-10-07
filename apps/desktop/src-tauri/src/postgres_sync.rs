@@ -3,7 +3,6 @@ use aes_gcm::{
     Aes256Gcm, Nonce,
 };
 use chrono::{DateTime, Utc};
-use rand::Rng;
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::PathBuf;
@@ -126,7 +125,7 @@ fn get_or_create_master_key(app: &AppHandle) -> Result<[u8; 32], String> {
 
     // Generate fresh cryptographically secure 32-byte key
     let mut key = [0u8; 32];
-    rand::thread_rng().fill(&mut key);
+    rand::fill(&mut key);
     fs::write(&key_path, &key).map_err(|e| format!("Failed to write master key: {}", e))?;
 
     Ok(key)
@@ -144,7 +143,7 @@ fn get_config_path(app: &AppHandle) -> Result<PathBuf, String> {
 fn encrypt_url(key: &[u8; 32], raw_url: &str) -> Result<(String, String), String> {
     let cipher = Aes256Gcm::new_from_slice(key).map_err(|e| e.to_string())?;
     let mut nonce_bytes = [0u8; 12];
-    rand::thread_rng().fill(&mut nonce_bytes);
+    rand::fill(&mut nonce_bytes);
     let nonce = Nonce::from_slice(&nonce_bytes);
 
     let ciphertext = cipher
