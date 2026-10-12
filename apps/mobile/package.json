@@ -16,7 +16,7 @@
     "@react-native-async-storage/async-storage": "^3.1.1",
     "babel-preset-expo": "~57.0.14",
     "date-fns": "^4.4.0",
-    "drizzle-orm": "^0.45.3",
+    "drizzle-orm": "^0.45.4",
     "expo": "~57.0.27",
     "expo-application": "^57.0.3",
     "expo-audio": "^57.0.5",
